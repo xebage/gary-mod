@@ -356,7 +356,8 @@ cmds = {
                 end
             end
             vdbg.destroy = true
-            tRemove('tthink')
+            tRemove('act')
+            tRemove("pa_Update")
             addText('cya')
         end,
         function() end
@@ -1105,7 +1106,7 @@ local Cache = {
 	
 	GroundTick = 0,
 	
-	og = lply:EyeAngles(),
+	og = Angle(),
 
 	ServerTime = CurTime(),
 	TickInterval = engine.TickInterval()
@@ -1162,6 +1163,13 @@ local function FixAngle(ang)
 	ang = ang or angle_zero
 	
 	return Angle(math.Clamp(math.NormalizeAngle(ang.pitch), -89, 89), math.NormalizeAngle(ang.yaw), math.NormalizeAngle(ang.roll))
+end
+
+local function NormAng(ang)
+    ang.x = nAngle( ang.x )
+    ang.p = mClamp( ang.p, -89, 89 )
+
+    return ang
 end
 
 local function UpdateCalcViewData(data)
@@ -1490,21 +1498,17 @@ local function predictTarget(pos,trg)
     if vars.predtype == 'm' then return pos-((lvel - (tvel* vars.mpred_num )) * (frm/(1/eng))) end
     if vars.predtype == 'xbow' then return (xpwn(pos, trg)) end
 end
- 
-local function FixView(cmd) 
-	Cache.og = Cache.og or cmd:GetViewAngles()
 
-	Cache.og = Cache.og + Angle( cmd:GetMouseY() * .023, cmd:GetMouseX() * -.023, 0 )
-    Cache.og = FixAngle(Cache.og)
-	
-	if cmd:CommandNumber() == 0 then
-		if cmd:KeyDown(IN_USE) then
-			Cache.og = FixAngle(cmd:GetViewAngles())
-		end
-	
-		cmd:SetViewAngles(Cache.og)
-		return
-	end
+local function FixView(cmd) 
+    if not Cache.og then Cache.og = cmd:GetViewAngles( cmd ) end
+    
+    Cache.og = Cache.og + Angle(cmd:GetMouseY() * .023, cmd:GetMouseX() * -.023, 0)
+    Cache.og = NormAng(Cache.og)
+    
+    if cmd:CommandNumber() == 0 then
+    	cmd:SetViewAngles(Cache.og)
+        return
+    end
 end
 
 local function FixMovement(cmd)
@@ -2251,20 +2255,6 @@ local function CalculateViewPunch(weapon)
 	if not weapon:IsScripted() then return lply:GetViewPunchAngles() end
 	return angle_zero
 end
-
-local function triggerBot(cmd,ang)
-    if vars.aim_triggerbot or (vars.aim_smarttb and lply:GetEyeTrace().Entity == targ) then
-        cmd:SetViewAngles(ang)
-        cmd:SetButtons(bit.bor(cmd:GetButtons(), IN_ATTACK))
-    elseif vars.fl_triggerbot then
-        if nbpkt then
-            cmd:SetViewAngles(ang)
-            cmd:SetButtons(IN_ATTACK)
-        end
-    else
-        cmd:SetViewAngles(ang)
-    end
-end
  
 local function Aimbot(cmd)
 	local Target = GetTarget()
@@ -2272,7 +2262,7 @@ local function Aimbot(cmd)
 	local key = input.GetKeyCode(vars.firekey)
 	
 	if lply:Alive() and shouldFire(Weapon) then
-		if input.IsKeyDown(key) or vars.aim_autofire then
+		if input.IsKeyDown(key) then
 	
 			local pos = GetAimbotPosition(Target)
 			if pos then
@@ -2281,8 +2271,11 @@ local function Aimbot(cmd)
 				
 				if vars.aim_bias > 0 then 
 	    			spreadang = LerpAngle(1 - vars.aim_bias/100, cmd:GetViewAngles(), spreadang) 
-	            end
-				triggerBot(cmd, FixAngle(spreadang - CalculateViewPunch(Weapon)))
+            	end
+            
+				cmd:SetViewAngles(FixAngle(spreadang - CalculateViewPunch(Weapon)))
+				
+				if vars.aim_autofire then cmd:AddKey(IN_ATTACK) end				
 			end
 			if isValid(a) and a:Clip1() <= 0 then cmd:SetButtons(bit.bor(cmd:GetButtons(), IN_RELOAD)) end
 		else
