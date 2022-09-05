@@ -38,8 +38,6 @@ local sSetFont = gsurface.SetFont
 local sDrawOutlinedRect = gsurface.DrawOutlinedRect
 local sDrawCircle = gsurface.DrawCircle
  
-local sw , sh = ScrW(), ScrH()
-local nbpkt = false
 local lply = LocalPlayer()
 local cmdFont = 'BudgetLabel'
 local guiFont = 'Trebuchet18'
@@ -86,10 +84,11 @@ local rCopyRenderTargetToTexture = grender.CopyRenderTargetToTexture
 local R_ = debug.getregistry()
 local R = tcopy( R_ )
  
-require("frozen2")
- 
-local epStart = StartPrediction
-local epEnd = EndPrediction
+pcall(require, "frozen2")
+
+local StartEnginePred = StartPrediction
+local StopEnginePred = EndPrediction
+local nbpkt = false
 local getFLBool = GetSendPacket
 local GetLatency = (lply:Ping()/1000)
  
@@ -194,7 +193,7 @@ local vars = {
     aim_bias = 0,
     aim_baim = false,
     aim_cone = true,
-    aim_conefov = 40,
+    aim_conefov = 16,
     targmode = 'xhair',
  
     fl = false,
@@ -1075,6 +1074,9 @@ local src = string.lower( debug.getinfo(2).short_src )
 end
 
 local Cache = {
+	ScrW = ScrW(),
+	ScrH = ScrH(),
+	
 	Order = {
 		HITGROUP_HEAD,
 		HITGROUP_CHEST,
@@ -1101,7 +1103,7 @@ local Cache = {
 	
 	Players = {},
 	
-	BhopStickTick = 0,
+	GroundTick = 0,
 	
 	og = lply:EyeAngles(),
 
@@ -1109,14 +1111,14 @@ local Cache = {
 	TickInterval = engine.TickInterval()
 }
  
--- functions
+-- global functions
 
-function player.GetCached(ValidOnly)
+function player.Getstuffd(ValidOnly)
 	if ValidOnly then
 		local players = {}
 
 		for i = 1, #Cache.Players do
-			if not IsValid(Cache.Players[i]) then continue end
+			if not isValid(Cache.Players[i]) then continue end
 
 			players[#players + 1] = Cache.Players[i]
 		end
@@ -1128,14 +1130,59 @@ function player.GetCached(ValidOnly)
 end
 
 function player.GetSorted()
-	local players = player.GetCached(true)
-	local lpos = lply:GetPos()
+	local players = player.Getstuffd(true)
+	local lpos = ply:GetPos()
 
-	table.sort(players, function(a, b)
+	tSort(players, function(a, b)
 		return a:GetPos():DistToSqr(lpos) > b:GetPos():DistToSqr(lpos)
 	end)
 
 	return players
+end
+ 
+-- local functions
+
+local function GetEyePos()
+	return Cache.CalcView.EyePos
+end
+
+local function GetEyeAngles()
+	return Cache.CalcView.EyeAngles
+end
+
+local function GetFOV()
+	return Cache.CalcView.FOV
+end
+
+local function GetZNear()
+	return Cache.CalcView.ZNear
+end
+
+local function FixAngle(ang)
+	ang = ang or angle_zero
+	
+	return Angle(math.Clamp(math.NormalizeAngle(ang.pitch), -89, 89), math.NormalizeAngle(ang.yaw), math.NormalizeAngle(ang.roll))
+end
+
+local function UpdateCalcViewData(data)
+	if not data then return end
+
+	Cache.CalcView.EyePos = data.origin
+	Cache.CalcView.EyeAngles = data.angles
+	Cache.CalcView.FOV = data.fov
+	Cache.CalcView.ZNear = data.znear
+end
+
+local function ValidEntity(entity)
+	if not IsValid(entity) then
+		return false
+	end
+
+	if not entity:IsPlayer() then
+		return true
+	end
+
+	return entity ~= lply and entity:Alive() and entity:Team() ~= TEAM_SPECTATOR and entity:GetObserverMode() == 0 and not entity:IsDormant()
 end
 
 local function getWeapon( ent )
@@ -1169,49 +1216,6 @@ local function onScreen(ent)
     else
         return false
     end
-end
-
-local function ValidEntity(entity)
-	if not IsValid(entity) then
-		return false
-	end
-
-	if not entity:IsPlayer() then
-		return true
-	end
-
-	return entity ~= lply and entity:Alive() and entity:Team() ~= TEAM_SPECTATOR and entity:GetObserverMode() == 0 and not entity:IsDormant()
-end
-
-local function GetEyePos()
-	return Cache.CalcView.EyePos
-end
-
-local function GetEyeAngles()
-	return Cache.CalcView.EyeAngles
-end
-
-local function GetFOV()
-	return Cache.CalcView.FOV
-end
-
-local function GetZNear()
-	return Cache.CalcView.ZNear
-end
-
-local function FixAngle(ang)
-	ang = ang or angle_zero
-	
-	return Angle(math.Clamp(math.NormalizeAngle(ang.pitch), -89, 89), math.NormalizeAngle(ang.yaw), math.NormalizeAngle(ang.roll))
-end
-
-local function UpdateCalcViewData(data)
-	if not data then return end
-
-	Cache.CalcView.EyePos = data.origin
-	Cache.CalcView.EyeAngles = data.angles
-	Cache.CalcView.FOV = data.fov
-	Cache.CalcView.ZNear = data.znear
 end
  
 local function txtesp(v)
@@ -1285,7 +1289,7 @@ local function linez(v)
         else
             sSetDrawColor(255, 255, 255)
         end
-        sDrawLine(sw / 2, sh / 1, vpos.x , vpos.y)
+        sDrawLine(Cache.ScrW / 2, Cache.ScrH / 1, vpos.x , vpos.y)
     end
 end
  
@@ -1294,8 +1298,8 @@ local function xhair()
         for k,v in pairs(player.GetAll()) do
             sSetDrawColor(teamGetColor(v:Team()))
         end
-        sDrawRect(sw/2-8,sh/2-1,16,2)
-        sDrawRect(sw/2-1,sh/2-8,2,16)
+        sDrawRect(Cache.ScrW/2-8,Cache.ScrH/2-1,16,2)
+        sDrawRect(Cache.ScrW/2-1,Cache.ScrH/2-8,2,16)
     end
 end
  
@@ -1331,7 +1335,7 @@ local function hitboxes(v)
         local count = v:GetHitBoxCount(group) - 1
         for hitbox = 0,count do
             local bone = v:GetHitBoxBone(hitbox,group)
-            if(!bone) then continue end
+            if not bone then continue end
             local min,max = v:GetHitBoxBounds(hitbox,group)
             local bonepos,boneang = v:GetBonePosition(bone)
             if lply:GetEyeTrace().Entity == v then col = colors.red end
@@ -1434,7 +1438,7 @@ end
 local function rapidfire( cmd )
     local wep = getWeapon( lply )
     if lply:KeyDown( IN_ATTACK ) and lply:Alive() and vars.aim_rapidfire then
-        if shouldFire() then
+        if shouldFire(wep) then
             cmd:RemoveKey( IN_ATTACK )
         end
     end
@@ -1459,7 +1463,7 @@ end
 local function xpwn(pos, target)
     local lpos = lply:GetPos()
     local v0 = 3500
-    if target:IsValid() then
+    if ValidEntity(target) then
         local G = GetConVar("sv_gravity"):GetFloat()
         local lerp = GetConVar("cl_interp"):GetFloat()
         local tvel = target:GetAbsVelocity()
@@ -2013,43 +2017,59 @@ local function PseudoRandom(number)
 end
 
 local function GetHitBoxPositions(entity)
-	if not IsValid(entity) then
+	if not isValid(entity) then
 		return nil
 	end
 
-	local IsNull = true
-
-	local data = {
-		[HITGROUP_HEAD] = {},
-		[HITGROUP_CHEST] = {},
-		[HITGROUP_STOMACH] = {}
-	}
+	local null = true
+	
+	
+	if not vars.aim_baim then -- this is absolutely retarded and theres a much better way but im too tired to care
+		hitboxdata = {
+			[HITGROUP_HEAD] = {},
+			[HITGROUP_CHEST] = {},
+			[HITGROUP_STOMACH] = {}
+		}
+	else
+		hitboxdata = {
+			[HITGROUP_CHEST] = {},
+			[HITGROUP_STOMACH] = {}
+		}
+	end
 
 	for hitset = 0, entity:GetHitboxSetCount() - 1 do
 		for hitbox = 0, entity:GetHitBoxCount(hitset) - 1 do
 			local hitgroup = entity:GetHitBoxHitGroup(hitbox, hitset)
-			if not hitgroup or not data[hitgroup] then continue end
+
+			if not hitgroup or not hitboxdata[hitgroup] then continue end
 
 			local bone = entity:GetHitBoxBone(hitbox, hitset)
 			local mins, maxs = entity:GetHitBoxBounds(hitbox, hitset)
+
 			if not bone or not mins or not maxs then continue end
 
 			local bmatrix = entity:GetBoneMatrix(bone)
+
 			if not bmatrix then continue end
 
 			local pos, ang = bmatrix:GetTranslation(), bmatrix:GetAngles()
+
 			if not pos or not ang then continue end
 
 			mins:Rotate(ang)
 			maxs:Rotate(ang)
 
-			data[hitgroup][#data[hitgroup] + 1] = pos + ((mins + maxs) * 0.5)
+			table.insert(hitboxdata[hitgroup], pos + ((mins + maxs) * 0.5))
 
-			IsNull = false
+			null = false
 		end
 	end
 
-	return IsNull and nil or data
+	if null then
+		return nil
+	end
+
+	return hitboxdata
 end
 
 local function GetBoneDataPosition(bonename)
@@ -2058,7 +2078,7 @@ local function GetBoneDataPosition(bonename)
 	end
 
 	bonename = bonename:lower()
-
+	
 	if bonename:find("head") then
 		return HITGROUP_HEAD
 	end
@@ -2075,14 +2095,14 @@ local function GetBoneDataPosition(bonename)
 end
 
 local function GetBonePositions(entity)
-	if not IsValid(entity) then
+	if not isValid(entity) then
 		return nil
 	end
 
 	entity:InvalidateBoneCache()
 	entity:SetupBones()
 
-	local IsNull = true
+	local null = true
 
 	local data = {
 		[HITGROUP_HEAD] = {},
@@ -2092,29 +2112,37 @@ local function GetBonePositions(entity)
 
 	for bone = 0, entity:GetBoneCount() - 1 do
 		local name = entity:GetBoneName(bone)
+
 		if not name or name == "__INVALIDBONE__" then continue end
 
 		name = name:lower()
 
 		local boneloc = GetBoneDataPosition(name)
+
 		if not boneloc then continue end
 
 		local bonematrix = entity:GetBoneMatrix(bone)
+
 		if not bonematrix then continue end
 
 		local pos = bonematrix:GetTranslation()
+
 		if not pos then continue end
 
-		data[boneloc][#data[boneloc] + 1] = pos
+		table.insert(data[boneloc], pos)
 
-		IsNull = false
+		null = false
 	end
 
-	return IsNull and nil or data
+	if null then
+		return nil
+	end
+
+	return data
 end
 
-local function GetAimbotPositions(entity)
-	if not IsValid(entity) then
+local function GetAimPositions(entity)
+	if not isValid(entity) then
 		return nil
 	end
 
@@ -2128,11 +2156,11 @@ local function GetAimbotPositions(entity)
 end
 
 local function GetAimbotPosition(entity)
-	if not IsValid(entity) then
+	if not isValid(entity) then
 		return nil
 	end
 
-	local data = GetAimbotPositions(entity)
+	local data = GetAimPositions(entity)
 
 	for _, set in ipairs(Cache.Order) do
 		if not data[set] then continue end
@@ -2153,7 +2181,8 @@ local function GetTarget(quick)
 	local best = math.huge
 	local entity = nil
 
-	for _, v in ipairs(player.GetCached(true)) do
+	for _, v in ipairs(Cache.Players) do
+		if not ValidEntity(v) then continue end
 		if vars.aim_noteam and (lply:Team() == v:Team()) then continue end
         if vars.aim_nofriends and v:GetFriendStatus() == 'friend' then continue end
         if vars.aim_onlybots and not v:IsBot() then continue end
@@ -2218,6 +2247,11 @@ local function CalculateNoSpread(weapon, cmdnbr, ang)
 	return spreadangle
 end
 
+local function CalculateViewPunch(weapon)
+	if not weapon:IsScripted() then return lply:GetViewPunchAngles() end
+	return angle_zero
+end
+
 local function triggerBot(cmd,ang)
     if vars.aim_triggerbot or (vars.aim_smarttb and lply:GetEyeTrace().Entity == targ) then
         cmd:SetViewAngles(ang)
@@ -2233,12 +2267,12 @@ local function triggerBot(cmd,ang)
 end
  
 local function Aimbot(cmd)
+	local Target = GetTarget()
 	local Weapon = lply:GetActiveWeapon()
 	local key = input.GetKeyCode(vars.firekey)
 	
 	if lply:Alive() and shouldFire(Weapon) then
 		if input.IsKeyDown(key) or vars.aim_autofire then
-			local Target = GetTarget()
 	
 			local pos = GetAimbotPosition(Target)
 			if pos then
@@ -2246,17 +2280,21 @@ local function Aimbot(cmd)
 				local spreadang = CalculateNoSpread(Weapon, cmd:CommandNumber(), AimAngle)
 				
 				if vars.aim_bias > 0 then 
-	            	spreadang = LerpAngle(1-vars.aim_bias/100, cmd:GetViewAngles(), spreadang) 
+	    			spreadang = LerpAngle(1 - vars.aim_bias/100, cmd:GetViewAngles(), spreadang) 
 	            end
-	            print(4)
-				triggerBot(cmd, FixAngle(spreadang))
+				triggerBot(cmd, FixAngle(spreadang - CalculateViewPunch(Weapon)))
 			end
 			if isValid(a) and a:Clip1() <= 0 then cmd:SetButtons(bit.bor(cmd:GetButtons(), IN_RELOAD)) end
 		else
 			if cmd:KeyDown(IN_ATTACK) then
 				local spreadang = CalculateNoSpread(Weapon, cmd:CommandNumber(), Cache.og)
 				
-				cmd:SetViewAngles(FixAngle(spreadang))
+				cmd:SetViewAngles(FixAngle(spreadang - CalculateViewPunch(Weapon)))
+			end
+		end
+		if vars.aim_triggerbot then 
+			if lply:GetEyeTrace().Entity == Target then
+				cmd:AddKey(IN_ATTACK)
 			end
 		end
 	end
@@ -2271,19 +2309,18 @@ end
 
 local function bunnyhop(cmd)
     if vars.bhop then
-        if cmd:KeyDown(IN_JUMP) then
-			if not lply:IsOnGround() then
-				cmd:RemoveKey(IN_JUMP)
-				Cache.BhopStickTick = 0
-			else
-				Cache.BhopStickTick = Cache.BhopStickTick + 1
-
-				if Cache.BhopStickTick > 4 then
-					cmd:RemoveKey(IN_JUMP)
-					Cache.BhopStickTick = 0
-				end
-			end
-		end
+        if lply:GetMoveType() == MOVETYPE_NOCLIP or lply:InVehicle() or lply:GetMoveType() == 8 then return end
+        if cmd:CommandNumber() ~= 0 then
+            if lply:IsOnGround() and cmd:KeyDown(IN_JUMP) then 
+            	cmd:RemoveKey(IN_JUMP) 
+            end
+            if vars.bhop_as then
+                if lply:IsOnGround() then return end
+                
+                cmd:SetForwardMove(5850 / lply:GetVelocity():Length2D())
+                cmd:SetSideMove((cmd:CommandNumber() % 2 == 0) and 700 or -700)
+            end
+        end
     end
 end
  
@@ -2312,16 +2349,19 @@ local realAngles = {p=0,y=0}
  
 local function aaEnemyPos()
     local targ = GetTarget()
-    if not isValid(targ) then return Cache.og end
+    
+    if not ValidEntity(targ) then return Cache.og end
     return (predictTarget(targ:GetPos(), targ)-lply:EyePos()):Angle()
 end
  
 local function antiaim(cmd)
     if not vars.aa then return end
     if lply:GetMoveType() == MOVETYPE_LADDER then return end
+    
     local ex = aaEnemyPos().x
     local ey = aaEnemyPos().y
     local p, y
+    
     if vars.aa_mode == 'none' then return end
     if vars.aa_mode == 'hblock' then
         p = -30
@@ -2389,15 +2429,17 @@ end
 local function boltTrails()
     local bolts
     for k, v in pairs(ents.GetAll()) do
-        if v:GetClass() != "crossbow_bolt" then continue end
+        if v:GetClass() ~= "crossbow_bolt" then continue end
         bolts = v
     end
-    if !isValid(bolts) then return end
+    
+    if not isValid(bolts) then return end
 
     local mins, maxs = bolts:GetRenderBounds()
     local mod = Vector(300, 0, 0)
+    
     cam.Start({type = '3D'})
-    render.DrawWireframeBox( bolts:GetPos(), bolts:GetAngles(), mins - mod, maxs, Color( 0, 255, 0 ), true )
+    	render.DrawWireframeBox(bolts:GetPos(), bolts:GetAngles(), mins - mod, maxs, Color(0,255,0), true)
     cam.End3D()
 end
  
@@ -2425,11 +2467,11 @@ end
  
 local function predInfo()
     if lply:Alive() then
-        if lply:KeyDown( IN_ATTACK ) then hmark = colors.red else hmark = colors.white end
+        if lply:KeyDown(IN_ATTACK) then hmark = colors.red else hmark = colors.white end
         local targ = GetTarget()
         local gg = GetAimbotPosition(targ)
         
-        if isValid(targ) and gg then 
+        if ValidEntity(targ) and gg then 
 	        local fart = gg:ToScreen()
 	        local dist = mRound(targ:GetPos():Distance(lply:GetPos()))
 	        local lspeed = mfloor(lply:GetAbsVelocity():Length())
@@ -2439,25 +2481,25 @@ local function predInfo()
 	
 	        sSetDrawColor(hmark)
 	        if vars.showinfo then
-	            DrawText(teamGetColor(targ:Team()),sw/2+10, sh/2 + 5 ,targ:Nick().. ' / ' .. tostring(vars.predtype),cmdFont)
-	            DrawText(teamGetColor(targ:Team()),sw/2+0, sh/2 + 15 ,tostring(targ:GetPos()),cmdFont)
-	            DrawText(teamGetColor(targ:Team()), sw/2+260, sh/2 + 15, 'p: ' .. tostring(GetLatency), cmdFont)
+	            DrawText(teamGetColor(targ:Team()),Cache.ScrW/2+10, Cache.ScrH/2 + 5 ,targ:Nick().. " / " .. tostring(vars.predtype),cmdFont)
+	            DrawText(teamGetColor(targ:Team()),Cache.ScrW/2+0, Cache.ScrH/2 + 15 ,tostring(targ:GetPos()),cmdFont)
+	            DrawText(teamGetColor(targ:Team()), Cache.ScrW/2+260, Cache.ScrH/2 + 15, 'p: ' .. tostring(GetLatency), cmdFont)
 	        end
-	        if fart.x > sw or fart.x < -sh then return end
+	        if fart.x > Cache.ScrW or fart.x < -Cache.ScrH then return end
 	        if vars.preddot then sDrawRect(fart.x,fart.y,9,9)end
-	        if vars.predline then sDrawLine(sw/2, sh/2, fart.x, fart.y) end
+	        if vars.predline then sDrawLine(Cache.ScrW/2, Cache.ScrH/2, fart.x, fart.y) end
         end
     end
 end
  
-tCreate('tthink', vars.act_delay, 0, function()
+tCreate("act", vars.act_delay, 0, function()
     if vars.act then
-        rcmd( 'act', vars.act_type )
+        rcmd('act', vars.act_type)
     end
 end)
- 
-makeHook('Think', function()
-        funnylights()
+
+tCreate("pa_Update", 0.3, 0, function()
+	Cache.Players = player.GetAll()
 end)
 
 -- hooks
@@ -2517,14 +2559,14 @@ makeHook("CalcView", function(ply, pos, ang, fov, zn, zf)
 	return view
 end)
  
-makeHook('CreateMove', function(cmd)
+makeHook("CreateMove", function(cmd)
     bunnyhop(cmd)
     fakeduck(cmd)
     antiaim(cmd)
     
-    epStart(cmd)
+    StartEnginePred(cmd)
     Aimbot(cmd)
-    epEnd()
+    StopEnginePred()
     
     fakelag(cmd)
     getFLBool(nbpkt)
@@ -2536,16 +2578,16 @@ makeHook('CreateMove', function(cmd)
     end
 end)
  
-makeHook('RenderScreenspaceEffects', function()
+makeHook("RenderScreenspaceEffects", function()
     if vars.esp then
         for k, v in pairs(ents.FindByClass( 'prop_physics' )) do
-            if (isValid(v) and onScreen(v)) then
+            if isValid(v) and onScreen(v) then
                 if vars.esp_xray then xray(v) end
                 if vars.tesp_props then txtprops(v) end
             end
         end
-        for k,v in pairs(player.GetAll()) do
-            if (isValid(v) and onScreen(v) and v:Alive() and v ~= lply) then
+        for k,v in pairs(player.Getstuffd(true)) do
+            if ValidEntity(v) then
                 if vars.esp_chams then chamz(v) end
                 if vars.esp_hitboxes then hitboxes(v) end
             end
@@ -2553,15 +2595,17 @@ makeHook('RenderScreenspaceEffects', function()
     end
 end)
 
-makeHook('HUDPaint', function()
+makeHook("HUDPaint", function()
     if vars.hudpaint then
-    	if vars.aim_cone then DrawCircle(sw/2, sh/2, vars.aim_conefov * 11.25, colors.white ) end
-        for k,v in pairs(player.GetAll()) do
-            if (isValid(v) and onScreen(v) and v:Alive() and lply:Alive() and v ~= lply ) then
+    	if vars.aim_cone then 
+    		surface.DrawCircle(Cache.ScrW/2, Cache.ScrH/2, vars.aim_conefov * 11.25, colors.white ) 
+    	end
+        for k,v in pairs(player.Getstuffd(true)) do
+            if ValidEntity(v) and lply:Alive() then
                 if vars.esp_boxes then boxcorners(v) end
                 if vars.tesp then txtesp(v) end
             end
-            if (isValid(v) and v:Alive() and lply:Alive()) then
+            if ValidEntity(v) and lply:Alive() then
                 if vars.esp_lines then 
                     linez(v) 
                 end
@@ -2571,6 +2615,21 @@ makeHook('HUDPaint', function()
         xhair()
         boltTrails()
     end
+end)
+
+makeHook("PrePlayerDraw", function(Player)
+	if Player ~= lply then return end
+	
+	Player:AnimResetGestureSlot(GESTURE_SLOT_VCD)
+end)
+
+makeHook("OnScreenSizeChanged", function()
+	Cache.ScrW = ScrW()
+	Cache.ScrH = ScrH()
+end)
+
+makeHook("Think", function()
+	funnylights()
 end)
  
 ccmd('fartmenu', ui)
