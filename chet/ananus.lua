@@ -1,14 +1,12 @@
 /*
-	ananus pk script
-  
+	ananus thing 
 	TODO:
 		make viewmodel chams customizable
-		fix chams, they are broke af rn
-		add 180 shot (falcos idea)
+		add 180 shot
 		add tracers
 */
 
-jit.flush()
+jit.flush() -- woot woot
 
 local Cache = {
 	ScrW = ScrW(),
@@ -18,7 +16,7 @@ local Cache = {
 	
 	LocalPlayer = LocalPlayer(),
 	
-	_R = debug.getregistry(),
+	_R = proxi and proxi._R or debug.getregistry(), -- B)
 	
 	Players = {},
 	Entities = {},
@@ -43,32 +41,17 @@ local Cache = {
 	    Seafoam = Color(201, 255, 229),
 	    White = Color(255, 255, 255),
 	    Yellow = Color(255, 255, 0, 255),
-	    
-	    Chams = {		
-	    	Invisible = Color(255, 0, 0),
-	    	Visible = Color(0, 255, 255),
-	    	
-	    	Props = {
-	    		Base = Color(0, 255, 255),
-	    		OverLay = Color(255, 40, 10)
-	    	}
-	    },
-	    
-	    Hitboxes = {
-	    	Hitbox = Color(0, 0, 0),
-	    	BoundingBox = Color(0, 255, 255)
-	    }
 	},
 
 	Materials = { -- if you wanna add your own cham materials, then add the option on line 1005 or somewhere around there
-		Visible = { -- if you know basic lua then you can do it, you got this	
-			DebugWhite = CreateMaterial("@@@@@@@@@@@@@@@@@@@@@", "VertexLitGeneric", {
+		Visible = { -- if you know literally the most basic lua then you can do it, you got this	
+			DebugWhite = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", {
 				["$basetexture"] = "models/debug/debugwhite",
 				["$model"] = 1,
 				["$ignorez"] = 0
 			}),
 		
-			Cherry = CreateMaterial("@@@@@@@@@@@@@@@@@@@@@", "VertexLitGeneric", {
+			Cherry = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", {
 				["$basetexture"] = "vgui/white_additive",
 				["$additive"] = 1,
 				["$envmap"] = "",
@@ -83,7 +66,7 @@ local Cache = {
 				["$ignorez"] = 0,
 			}),
 			
-			 Waterish = CreateMaterial("@@@@@@@@@@@@@@@@@@", "VertexLitGeneric", {
+			Waterish = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", {
 				["$basetexture"] = "water/island_water01_normal",
 				["$model"] = 1,
 				["$additive"] = 1,
@@ -98,7 +81,7 @@ local Cache = {
 				},
 			}),
 		
-			Woa = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "UnlitGeneric", { 
+			Woa = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "UnlitGeneric", { 
 				["$basetexture"] = "props/tvscreen005a", 
 				["$ignorez"] = 1, 		
 				["$model"] = 1,
@@ -110,13 +93,13 @@ local Cache = {
 		},
 
 		Invisible = {
-			DebugWhite = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "VertexLitGeneric", {
+			DebugWhite = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", {
 				["$basetexture"] = "models/debug/debugwhite",
 				["$model"] = 1,
 				["$ignorez"] = 1
 			}),
 		
-			Woa = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "UnlitGeneric", { 
+			Woa = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "UnlitGeneric", { 
 				["$basetexture"] = "props/tvscreen005a", 
 				["$ignorez"] = 1, 		
 				["$model"] = 1,
@@ -128,12 +111,12 @@ local Cache = {
 		},
 	
 		Overlay = {
-			Wireframe = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "", {
+			Wireframe = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "", {
 				["$basetexture"] = "models/wireframe",
 				["$ignorez"] = 1
 			}),
 			
-			Glow = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "VertexLitGeneric", { -- Wireframe Glow Federal HeMovin
+			Glow = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", { -- Wireframe Glow Federal HeMovin
 				["$additive"] = "1", 
 				["$basetexture"] = "vgui/white_additive",
 				["$bumpmap"] = "vgui/white_additive",
@@ -144,7 +127,7 @@ local Cache = {
 				["$ignorez"] = 1,
 			}),
 		
-			Federal = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "UnlitGeneric", {
+			Federal = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "UnlitGeneric", {
 				["$basetexture"] = "Models/effects/comball_tape",
 				["$nodecal"] = 1,
 				["$model"] = 1,
@@ -162,7 +145,7 @@ local Cache = {
 			    }
 			}),
 		
-			HeMovin = CreateMaterial("@@@@@@@@@@@@@@@@@@@@", "UnlitGeneric", {
+			HeMovin = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "UnlitGeneric", {
 				["$basetexture"] = "models/debug/debugwhite",
 				["$nodecal"] = 1,
 				["$model"] = 1,
@@ -216,185 +199,197 @@ local Vars = {
 		EntityColor = Color(200, 0, 255, 255),
 	},
 
-	PlayerChams = true,
-	PlayerChams_Visible = true,
-	PlayerChams_Invisible = true,
-	
-	PlayerCham_Visible_Color = Color(0, 200, 255),
-	PlayerCham_Invisible_Color = Color(200, 20, 10),
-	
-	PlayerCham_Visible_Material = "DebugWhite",
-	PlayerCham_Invisible_Material = "DebugWhite",
-			
-	PropChams = true,
-	PropChams_Overlay = true,
-	
-	PropCham_Material = "DebugWhite",
-	PropCham_Overlay_Material = "DebugWhite",
-	
-	PropCham_Color = Color(0, 255, 255),
-	PropCham_Overlay_Color = Color(220, 20, 20),
-	
-	Hitboxes = false,
-	BoundingBox = false,
+    Chams = {
+        Player = {
+			Enabled = true,
+            Visible = {
+                Enabled = true,
+                Color = Color(0, 255, 255),
+                Material = "DebugWhite",
+            },
 
-	Bhop = true,
-	AutoStrafe = true,
+            Invisible = {
+                Enabled = true,
+                Color = Color(255, 0, 0),
+                Material = "DebugWhite",
+            },
+        },
 
-	Tracers = true,
-	KillSound = true,
-	FOV = 116,
+        Prop = {
+            Enabled = true,
+            Color = Color(0, 200, 200),
+            Material = "DebugWhite",
+
+            Overlay = {
+                Enabled = true,
+                Color = Color(150, 10, 10),
+                Material = "Wireframe"
+            }
+        }
+    },
+	
+	Hitboxes = {
+        Enabled = false,
+        BoundingBox = false
+    },
+
+    Movement = {
+        Bhop = true,    
+        AutoStrafe = true,
+    },
+
+	Tracers = {
+        Enabled = true,
+        Color = Color(255, 0, 255)
+    },
+
+	KillSound = {
+        Enabled = true,
+        Sound = "buttons/button17.wav"
+    },
+
+	CustomFOV = {
+        Enabled = true,
+        FOV = 116
+    },
 		
-	Crosshair = true,
-	Length = 2,
-	Width = 1,
-	Color = Color(255, 0, 0, 0),
-	
-	ThirdPerson = false,
-	TPS_Distance = 120,
-	TPS_Yaw = 0
+	Crosshair = {
+        Enabled = true,
+	    Length = 2,
+	    Width = 1,
+	    Color = Color(255, 0, 0, 0),
+    },
+
+	Thirdperson = {
+        Enabled = false,
+        Distance = 120,
+        Yaw = 0
+    }
 }
 
--- metatable functions are swag
+do -- metatable functions are swag
+    local meta_en_g = Cache._R.Entity
+    local meta_pl_g = Cache._R.Player
+    local meta_wn_g = Cache._R.Weapon
 
-local _Registry = debug.getregistry()
+    meta_pl_g.IsInBuildMode = function(self)
+        for i = 1, #Cache.NetVars.BuildMode do
+            if self:GetNWBool(Cache.NetVars.BuildMode[i], false) then
+                return true
+            end
+        end
 
-local meta_en_g = _Registry.Entity
-local meta_pl_g = _Registry.Player
-local meta_wn_g = _Registry.Weapon
+        return false
+    end
 
-meta_pl_g.IsInBuildMode = function(self)
-	for i = 1, #Cache.NetVars.BuildMode do
-		if self:GetNWBool(Cache.NetVars.BuildMode[i], false) then
-			return true
-		end
-	end
+    meta_pl_g.IsInGodMode = function(self)
+        if self:HasGodMode() then return true end
 
-	return false
-end
+        for i = 1, #Cache.NetVars.GodMode do
+            if self:GetNWBool(Cache.NetVars.GodMode[i], false) then
+                return true
+            end
+        end
 
-meta_pl_g.IsInGodMode = function(self)
-	if self:HasGodMode() then return true end
+        return false
+    end
 
-	for i = 1, #Cache.NetVars.GodMode do
-		if self:GetNWBool(Cache.NetVars.GodMode[i], false) then
-			return true
-		end
-	end
+    meta_pl_g.IsProtected = function(self)
+        for i = 1, #Cache.NetVars.Protected do
+            if self:GetNWBool(Cache.NetVars.Protected[i], false) then
+                return true
+            end
+        end
+        
+        return false
+    end
 
-	return false
-end
+    meta_pl_g.IsTargetable = function(self)
+        return self ~= Cache.LocalPlayer and self:Alive() and self:Team() ~= TEAM_SPECTATOR and self:GetObserverMode() == 0
+    end
 
-meta_pl_g.IsProtected = function(self)
-	for i = 1, #Cache.NetVars.Protected do
-		if self:GetNWBool(Cache.NetVars.Protected[i], false) then
-			return true
-		end
-	end
-	
-	return false
-end
+    meta_en_g.GetHealthColor = function(self)
+        local Max = self:GetMaxHealth()
+        local Health = math.Clamp(self:Health(), 0, Max)
+        local Percent = Health * (Health / Max)
 
-meta_pl_g.IsTargetable = function(self)
-	return self ~= Cache.LocalPlayer and self:Alive() and self:Team() ~= TEAM_SPECTATOR and self:GetObserverMode() == 0
-end
+        if self._LastHealth ~= Health or not self._LastHealthColor then
+            self._LastHealth = Health
+            self._LastHealthColor = Color(255 - (Percent * 2.55), Percent * 2.55, 0)
+        end
+            
+        return self._LastHealthColor, Percent / Health
+    end
 
-meta_en_g.GetHealthColor = function(self)
-	local Max = self:GetMaxHealth()
-	local Health = math.Clamp(self:Health(), 0, Max)
-	local Percent = Health * (Health / Max)
+    meta_en_g.GetScreenCorners = function(self)
+        if not IsValid(self) then
+            return 0, 0, 0, 0
+        end
 
-	if self._LastHealth ~= Health or not self._LastHealthColor then
-		self._LastHealth = Health
-		self._LastHealthColor = Color(255 - (Percent * 2.55), Percent * 2.55, 0)
-	end
-		
-	return self._LastHealthColor, Percent / Health
-end
+        local Mins, Maxs = self:OBBMins(), self:OBBMaxs()
 
-meta_en_g.GetScreenCorners = function(self)
-	if not IsValid(self) then
-		return 0, 0, 0, 0
-	end
+        local Coords = {
+            self:LocalToWorld(Mins):ToScreen(),
+            self:LocalToWorld(Vector(Mins.x, Maxs.y, Mins.z)):ToScreen(),
+            self:LocalToWorld(Vector(Maxs.x, Maxs.y, Mins.z)):ToScreen(),
+            self:LocalToWorld(Vector(Maxs.x, Mins.y, Mins.z)):ToScreen(),
 
-	local Mins, Maxs = self:OBBMins(), self:OBBMaxs()
+            self:LocalToWorld(Maxs):ToScreen(),
+            self:LocalToWorld(Vector(Mins.x, Maxs.y, Maxs.z)):ToScreen(),
+            self:LocalToWorld(Vector(Mins.x, Mins.y, Maxs.z)):ToScreen(),
+            self:LocalToWorld(Vector(Maxs.x, Mins.y, Maxs.z)):ToScreen()
+        }
 
-	local Coords = {
-		self:LocalToWorld(Mins):ToScreen(),
-    	self:LocalToWorld(Vector(Mins.x, Maxs.y, Mins.z)):ToScreen(),
-    	self:LocalToWorld(Vector(Maxs.x, Maxs.y, Mins.z)):ToScreen(),
-    	self:LocalToWorld(Vector(Maxs.x, Mins.y, Mins.z)):ToScreen(),
+        local Left, Right, Top, Bottom = Coords[1].x, Coords[1].x, Coords[1].y, Coords[1].y
 
-    	self:LocalToWorld(Maxs):ToScreen(),
-    	self:LocalToWorld(Vector(Mins.x, Maxs.y, Maxs.z)):ToScreen(),
-    	self:LocalToWorld(Vector(Mins.x, Mins.y, Maxs.z)):ToScreen(),
-    	self:LocalToWorld(Vector(Maxs.x, Mins.y, Maxs.z)):ToScreen()
-	}
+        for _, v in ipairs(Coords) do
+            if Left > v.x then Left = v.x end
+            if Top > v.y then Top = v.y end
+            if Right < v.x then Right = v.x end
+            if Bottom < v.y then Bottom = v.y end
+        end
 
-	local Left, Right, Top, Bottom = Coords[1].x, Coords[1].x, Coords[1].y, Coords[1].y
+        return math.Round(Left), math.Round(Right), math.Round(Top), math.Round(Bottom)
+    end
 
-	for _, v in ipairs(Coords) do
-		if Left > v.x then
-			Left = v.x
-		end
+    meta_pl_g.HasValidMoveType = function(self)
+        return self:GetMoveType() == MOVETYPE_WALK and not IsValid(self:GetVehicle()) and self:WaterLevel() < 2
+    end
 
-		if Top > v.y then
-			Top = v.y
-		end
+    meta_pl_g.IsFriend = function(self)
+        if not IsValid(self) then return false end
 
-		if Right < v.x then
-			Right = v.x
-		end
+        return self:GetFriendStatus() == "friend"
+    end
 
-		if Bottom < v.y then
-			Bottom = v.y
-		end
-	end
+    meta_wn_g.GetBase = function(self)
+        if not self.Base then return nil end
 
-	return math.Round(Left), math.Round(Right), math.Round(Top), math.Round(Bottom)
-end
+        return self.Base:lower():Split("_")[1]
+    end
 
-meta_pl_g.HasValidMoveType = function(self)
-	return self:GetMoveType() == MOVETYPE_WALK and not IsValid(self:GetVehicle()) and self:WaterLevel() < 2
-end
+    meta_wn_g.IsBasedOnShort = function(self, Base)
+        return self:GetBase() == Base
+    end
 
-meta_pl_g.IsFriend = function(self)
-	if not IsValid(self) then return false end
+    meta_wn_g.GetWeaponName = function(self)
+        local Name = self:GetClass()
+        
+        if self.GetPrintName then
+            local PrintName = self:GetPrintName()
 
-	return self:GetFriendStatus() == "friend"
-end
+            if PrintName == "<MISSING SWEP PRINT NAME>" then
+                return Name
+            end
 
-meta_wn_g.GetBase = function(self)
-	if not self.Base then return nil end
+            return language.GetPhrase(PrintName)
+        end
 
-	return self.Base:lower():Split("_")[1]
-end
-
-meta_wn_g.IsBasedOnShort = function(self, Base)
-	return self:GetBase() == Base
-end
-
-meta_wn_g.GetWeaponName = function(self)
-	local Name = self:GetClass()
-	
-	if self.GetPrintName then
-		local PrintName = self:GetPrintName()
-
-		if PrintName == "<MISSING SWEP PRINT NAME>" then
-			return Name
-		end
-
-		return language.GetPhrase(PrintName)
-	end
-
-	return Name
+        return Name
+    end
 end
 
 --- normal functions
-
-local function DrawLineToScreen(first, second)
-	surface.DrawLine(first.x, first.y, second.x, second.y)
-end
 
 local function BitflagHasValue(pFlags, pBit)
 	return bit.band(pFlags, pBit) ~= 0
@@ -508,7 +503,9 @@ local function DoESP(Entity, pFlags)
 			local pos = bm:GetTranslation()
 			if not ppos or not pos then continue end
 
-			DrawLineToScreen(ppos:ToScreen(), pos:ToScreen())
+			local PPScreen, PScreen = ppos:ToScreen(), pos:ToScreen()
+
+			surface.DrawLine(PPScreen.x, PPScreen.y, PScreen.x, PScreen.y)
 		end
 	end
 
@@ -533,7 +530,7 @@ local function DoESP(Entity, pFlags)
 		if Health ~= Entity:GetMaxHealth() then
 			local tw, th = surface.GetTextSize(Health)
 
-			surface.SetTextColor(Cache.Colors.White)
+			surface.SetTextColor(HealthColor)
 			surface.SetTextPos(Left - s - hw - tw, math.Clamp(HealthPos, HealthPos - (th / 3), Bottom - th))
 			surface.DrawText(Health)
 		end
@@ -589,41 +586,87 @@ local function DoESP(Entity, pFlags)
 	end
 end
 
-timer.Create("sup", 0.3, 0, function()
-	table.Empty(Cache.Players)
-	table.Merge(Cache.Players, player.GetAll()) -- best way of getting a table of all players lol
+local function ShowHitboxes(Entity)
+	if Vars.Hitboxes.Enabled then
+		Entity:SetupBones()
+
+		if Entity:GetHitBoxGroupCount() == nil then return end
 		
-	Cache.Entities = ents.GetAll()
+		for Group = 0, Entity:GetHitBoxGroupCount() - 1 do
+		 	for Hitbox = 0, Entity:GetHitBoxCount(Group) - 1 do
+		 		local Position, Angle = Entity:GetBonePosition(Entity:GetHitBoxBone(Hitbox, Group))
+		 		local Mins, Maxs = Entity:GetHitBoxBounds(Hitbox, Group)
 
-	table.sort(Cache.Entities, function(a, b)
-		return a:EntIndex() < b:EntIndex()
-	end)
-
-	for i = #Cache.Entities, 1, -1 do
-		if Cache.Entities[i]:EntIndex() < 0 then
-			table.remove(Cache.Entities, i)
-		end
-	end
-	
-	for i = 1, #Cache.Players do
-		if BitflagHasValue(Vars.ESP.PlayerFlags, Cache.BitFlags.Avatar) then
-			if not IsValid(Cache.AvatarFrames[Cache.Players[i]:SteamID64() or "BOT"]) then
-				local pAvatar = vgui.Create("AvatarImage")
-
-				pAvatar:SetSize(16, 16)
-				pAvatar:SetVisible(false)
-				pAvatar:SetPaintedManually(true)
-				pAvatar:SetPlayer(Cache.Players[i], 16)
-
-				Cache.AvatarFrames[Cache.Players[i]:SteamID64() or "BOT"] = pAvatar
+				render.DrawWireframeBox(Position, Angle, Mins, Maxs, Cache.Colors.Black, true)
 			end
 		end
+	
+		if Vars.Hitboxes.BoundingBox then
+			local Mins, Maxs = Entity:GetCollisionBounds()
+			render.DrawWireframeBox(Entity:GetPos(), Entity:IsPlayer() and angle_zero or Entity:GetAngles(), Mins, Maxs, Cache.Colors.Yellow, true)
+		end
 	end
-end)
+end
+
+local function Chams(Entity)
+	if Entity:IsPlayer() then
+		if not Vars.Chams.Player.Enabled then return end
+		
+		local Weapon = Entity.GetActiveWeapon and Entity:GetActiveWeapon() or NULL
+
+		if Vars.Chams.Player.Invisible.Enabled then
+			local Color = Vars.Chams.Player.Invisible.Color
+			local Material = Vars.Chams.Player.Invisible.Material
+			
+			render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
+			render.SetBlend(Color.a / 255)
+			render.MaterialOverride(Cache.Materials.Invisible[Material])
+			
+			Entity:DrawModel()
+			if Weapon:IsValid() then Weapon:DrawModel() end
+		end
+
+		if Vars.Chams.Player.Visible.Enabled then
+			local Color = Vars.Chams.Player.Visible.Color
+			local Material = Vars.Chams.Player.Visible.Material
+			
+			render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
+			render.SetBlend(Color.a / 255)
+			render.MaterialOverride(Cache.Materials.Visible[Material])
+
+			Entity:DrawModel()
+			if Weapon:IsValid() then Weapon:DrawModel() end
+		end
+	elseif Vars.Chams.Prop.Enabled and Entity:GetClass() == "prop_physics" then
+		local Dist = Entity:GetPos():DistToSqr(Cache.LocalPlayer:GetPos()) / 500^2
+		
+		local Color = Vars.Chams.Prop.Color
+		local Material = Vars.Chams.Prop.Material
+		
+		cam.Start3D()
+			render.MaterialOverride(Cache.Materials.Invisible[Material])
+			render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
+			render.SetBlend(0.08 + Dist)
+			Entity:DrawModel()
+			
+			-- overlay
+			if Vars.Chams.Prop.Overlay.Enabled then
+				local OverLayColor = Vars.Chams.Prop.Overlay.Color
+				local OverlayMaterial = Vars.Chams.Prop.Overlay.Material
+			
+				render.MaterialOverride(Cache.Materials.Overlay[OverlayMaterial])
+				render.SetColorModulation(OverLayColor.r / 255, OverLayColor.g / 255, OverLayColor.b / 255)
+				render.SetBlend(OverLayColor.a / 255)
+							
+				Entity:DrawModel()
+			end
+		cam.End3D()
+	end
+end
 
 local GroundTick = 0
 local function Bhop(cmd)
-	if not Vars.Bhop then return end
+	if not Vars.Movement.Bhop then return end
 	if Cache.LocalPlayer:GetMoveType() ~= MOVETYPE_WALK or IsValid(Cache.LocalPlayer:GetVehicle()) or Cache.LocalPlayer:WaterLevel() > 2 then return end
 	if not cmd:KeyDown(IN_JUMP) then return end
 	
@@ -641,7 +684,7 @@ local function Bhop(cmd)
 end
 
 local function AutoStrafe(cmd)
-	if not Vars.AutoStrafe then return end
+	if not Vars.Movement.AutoStrafe then return end
 	if Cache.LocalPlayer:IsOnGround() then return end
 	
 	local MaxSideMove = Cache.ConVars.cl_sidespeed:GetFloat()
@@ -653,6 +696,58 @@ local function AutoStrafe(cmd)
 	end
 end
 
+gameevent.Listen("entity_killed")
+hook.Add("entity_killed", "", function(data)
+	attacker = ents.GetByIndex(data.entindex_attacker) or NULL
+	victim = ents.GetByIndex(data.entindex_killed) or NULL
+
+	if not IsValid(attacker) or not IsValid(victim) or not victim:IsPlayer() or victim == attacker then return end
+
+	if attacker == ply and Vars.KillSound.Enabled then
+		timer.Simple(0, function()
+		print("owned")
+			surface.PlaySound(Vars.KillSound.Sound)
+		end)
+	end
+end)
+
+local LastTick = 0
+hook.Add("Tick", "", function()
+	local Time = SysTime()
+
+	if Time - LastTick >= 0.3 then
+		table.Empty(Cache.Players)
+		table.Merge(Cache.Players, player.GetAll()) -- best way of getting a table of all players apparently lol
+			
+		Cache.Entities = ents.GetAll()
+
+		for i = #Cache.Entities, 1, -1 do
+			if Cache.Entities[i]:EntIndex() < 0 then
+				table.remove(Cache.Entities, i)
+			end
+		end
+		
+		for i = 1, #Cache.Players do
+			if BitflagHasValue(Vars.ESP.PlayerFlags, Cache.BitFlags.Avatar) then
+				if not IsValid(Cache.AvatarFrames[Cache.Players[i]:SteamID64() or "BOT"]) then
+					local pAvatar = vgui.Create("AvatarImage")
+
+					pAvatar:SetSize(16, 16)
+					pAvatar:SetVisible(false)
+					pAvatar:SetPaintedManually(true)
+					pAvatar:SetPlayer(Cache.Players[i], 16)
+
+					Cache.AvatarFrames[Cache.Players[i]:SteamID64() or "BOT"] = pAvatar
+				end
+			end
+		end
+
+		collectgarbage("step")
+
+		LastTick = Time
+	end
+end)
+
 hook.Add("CreateMove", "", function(cmd)
 	Bhop(cmd)
 	AutoStrafe(cmd)
@@ -661,8 +756,8 @@ end)
 hook.Add("PreDrawViewModel", "", function()
 	if IsDrawingGlow then
 		render.SetColorModulation(1, 0, 0)
-		render.MaterialOverride( mat )
-		render.MaterialOverride(Glow)
+		render.MaterialOverride(Cache.Materials.Visible.Woa)
+		render.MaterialOverride(Cache.Materials.Overlay.Federal)
 	else
 		render.SetColorModulation(0, 0, 0)
 	end
@@ -671,9 +766,8 @@ end)
      
 hook.Add("PostDrawViewModel", "", function()
 	render.SetColorModulation(1, 1, 1)
-	render.MaterialOverride(None)
+	render.MaterialOverride(nil)
 	render.SetBlend(1)
-	render.SuppressEngineLighting(false)
      
 	if IsDrawingGlow then return end
      
@@ -682,96 +776,7 @@ hook.Add("PostDrawViewModel", "", function()
 	IsDrawingGlow = false
 end)
 
-local function ShowHitboxes(Entity)
-	if Vars.Hitboxes then
-		Entity:SetupBones()
-
-		if Entity:GetHitBoxGroupCount() == nil then return end
-		
-		for Group = 0, Entity:GetHitBoxGroupCount() - 1 do
-		 	for Hitbox = 0, Entity:GetHitBoxCount(Group) - 1 do
-		 		local Position, Angle = Entity:GetBonePosition(Entity:GetHitBoxBone(Hitbox, Group))
-		 		local Mins, Maxs = Entity:GetHitBoxBounds(Hitbox, Group)
-
-				render.DrawWireframeBox(Position, Angle, Mins, Maxs, Cache.Colors.Hitboxes.Hitbox, true)
-			end
-		end
-	
-		if Vars.BoundingBox then
-			local Mins, Maxs = Entity:GetCollisionBounds()
-			render.DrawWireframeBox(Entity:GetPos(), Entity:IsPlayer() and angle_zero or Entity:GetAngles(), Mins, Maxs, Cache.Colors.Hitboxes.BoundingBox, true)
-		end
-	end
-end
-
-local function Chams(Entity)
-	if Entity:IsPlayer() then
-		if not Vars.PlayerChams then return end
-		
-		local Weapon = Entity.GetActiveWeapon and Entity:GetActiveWeapon() or NULL
-
-		if Vars.PlayerChams_Invisible then
-			local Color = Vars.PlayerCham_Invisible_Color
-			local Material = Vars.PlayerCham_Invisible_Material
-			
-			render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
-			render.SetBlend(Color.a / 255)
-			render.MaterialOverride(Cache.Materials.Invisible[Material])
-			
-			Entity:DrawModel()
-			if Weapon:IsValid() then Weapon:DrawModel() end
-		end
-
-		if Vars.PlayerChams_Visible then
-			local Color = Vars.PlayerCham_Visible_Color
-			local Material = Vars.PlayerCham_Visible_Material
-			
-			render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
-			render.SetBlend(Color.a / 255)
-			render.MaterialOverride(Cache.Materials.Visible[Material])
-
-			Entity:DrawModel()
-			if Weapon:IsValid() then Weapon:DrawModel() end
-		end
-	else
-		if not Vars.PropChams then return end
-		
-		local Dist = Entity:GetPos():Distance(Cache.LocalPlayer:GetPos()) / 500
-			
-		local Color = Vars.PropCham_Color
-		local Material = Vars.PropCham_Material
-		
-		cam.Start3D()
-			render.SuppressEngineLighting(true)
-			render.MaterialOverride(Cache.Materials.Invisible[Material])
-			Entity:SetRenderMode(RENDERMODE_TRANSALPHA)
-			render.SetColorModulation(Color.r, Color.g, Color.b)
-			render.SetBlend(0.08 + Dist)
-			Entity:DrawModel()
-			render.SuppressEngineLighting(false)
-			render.MaterialOverride(nil)
-			
-			-- overlay
-			if Vars.PropChams_Overlay then
-				local OverLayColor = Vars.PropCham_Overlay_Color
-				local OverlayMaterial = Vars.PropCham_Overlay_Material
-			
-				render.SuppressEngineLighting(true)
-				render.MaterialOverride(Cache.Materials.Overlay[OverlayMaterial])
-				Entity:SetRenderMode(RENDERMODE_TRANSALPHA)
-				render.SetColorModulation(OverLayColor.r, OverLayColor.g, OverLayColor.b)
-				render.SetBlend(100 / 255)
-							
-				Entity:DrawModel()
-							
-				render.SuppressEngineLighting(false)
-				render.MaterialOverride(nil)
-			end
-		cam.End3D()
-	end
-end
-
-hook.Add("PostDrawHUD", "@@@@@@@@@@@", function()
+hook.Add("PostDrawHUD", "", function()
 	local PlayerFlags = Vars.ESP.PlayerFlags
 	local FriendFlags = Vars.ESP.FriendFlags
 	local EntityFlags = Vars.ESP.EntityFlags
@@ -811,7 +816,7 @@ hook.Add("PreDrawEffects", "", function()
 	
 	local EntsThisFrame = {}
 	
-	if Vars.PlayerChams then
+	if Vars.Chams.Player.Enabled then
 		for i = 1, #Cache.Players do	
 			if not IsValid(Cache.Players[i]) or not Cache.Players[i]:IsTargetable() then continue end
 	
@@ -819,7 +824,7 @@ hook.Add("PreDrawEffects", "", function()
 		end
 	end
 	
-	if Vars.PropChams then
+	if Vars.Chams.Prop.Enabled then
 		for _, v in ipairs(ents.FindByClass("prop_physics")) do
 			if not IsValid(v) then continue end
 			
@@ -842,12 +847,12 @@ hook.Add("CalcView", "", function(Player, Position, Angle, FOV, ZNear, ZFar)
 	if not IsValid(Player) then return end	
 
 	local View = {
-		origin = Vars.ThirdPerson and Position - ((Angle - Angle(0, Vars.TPS_Yaw, 0)):Forward() * Vars.TPS_Distance) or Position,
+		origin = Vars.Thirdperson.Enabled and Position - ((Angle - Angle(0, Vars.Thirdperson.Yaw, 0)):Forward() * Vars.Thirdperson.Distance) or Position,
 		angles = Angle,
-		fov = Vars.FOV,
+		fov = Vars.CustomFOV.Enabled and Vars.CustomFOV.FOV or FOV,
 		znear = ZNear,
 		zfar = ZFar,
-		drawviewer = Vars.Thirdperson
+		drawviewer = Vars.Thirdperson.Enabled
 	}
 
 	return View
@@ -865,18 +870,18 @@ concommand.Add("an_menu", function()
 end)
 
 concommand.Add("an_unload", function()
+	hook.Remove("entity_killed", "")
+	hook.Remove("Tick", "")
 	hook.Remove("CreateMove", "")
 	hook.Remove("PreDrawViewModel", "")
 	hook.Remove("PostDrawViewModel", "")
-	hook.Remove("PostDrawHUD", "@@@@@@@@@@@")
+	hook.Remove("PostDrawHUD", "")
 	hook.Remove("PreDrawEffects", "")
 	hook.Remove("CalcView", "")
-	timer.Remove("sup")
 	
 	concommand.Remove("an_menu")
 	concommand.Remove("an_unload")
 end)
-
 
 -- Menu Creation
 
@@ -902,18 +907,6 @@ do
 			end
 		end
 	end
-	
-	local function MakeCheckBox(Parent, X, Y, Name, Val)
-        local CheckBox = vgui.Create("DCheckBoxLabel", Parent)
-        CheckBox:SetText(tostring(Name))
-        CheckBox:SetPos(X, Y)
-        CheckBox:SetChecked(Vars[Val])
-        CheckBox:SetTextColor(Cache.Colors.Black)
-        	
-        CheckBox.OnChange = function(self, new)
-        	Vars[Val] = new
-        end
-    end
     
     local function MakeSlider(Parent, X, Y, W, H, Name, Min, Max, Val)
         local NewSlider = vgui.Create("DNumSlider", Parent)
@@ -929,12 +922,38 @@ do
             Vars[Val] = NewVal
         end
     end
+
+    local function MakeCheckbox(Parent, X, Y, Label, Table, Key)
+		local Checkbox = vgui.Create("DCheckBoxLabel", Parent)
+
+		Checkbox.m_tTable = Table
+		Checkbox.m_strKey = Key
+		Checkbox.m_flLastThink = 0
+
+		Checkbox:SetTextColor(Cache.Colors.Black)
+		Checkbox:SetText(Label)
+        Checkbox:SetPos(X, Y)
+		Checkbox:SetChecked(tobool(Table[Key]))
+		Checkbox:SetSkin("Default")
+
+		function Checkbox:Think()
+			if CurTime() - self.m_flLastThink >= 0.3 then
+				self:SetChecked(self.m_tTable[self.m_strKey])
+				self.m_flLastThink = CurTime()
+			end
+		end
+
+		function Checkbox:OnChange(NewValue)
+			self.m_tTable[self.m_strKey] = NewValue
+		end
+	end
     
     local function AddColorbox(Parent, X, Y, Table, Key)
 		local Colorbox = vgui.Create("DButton", Parent)
 		Colorbox:SetSize(15, 15)
 		Colorbox:SetText("")
 		Colorbox:SetPos(X, Y)
+        
 		Colorbox.m_tTable = Table
 		Colorbox.m_strKey = Key
 
@@ -1016,12 +1035,12 @@ do
 	
 	-- player chams
 	
-	MakeCheckBox(PlayerPanel, 155, 25, "Chams Enabled", "PlayerChams")
-	MakeCheckBox(PlayerPanel, 180, 50, "Visible Chams", "PlayerChams_Visible")
-	MakeCheckBox(PlayerPanel, 180, 75, "Invisible Chams", "PlayerChams_Invisible")
+	MakeCheckbox(PlayerPanel, 155, 25, "Chams Enabled", Vars.Chams.Player, "Enabled")
+	MakeCheckbox(PlayerPanel, 180, 50, "Visible Chams", Vars.Chams.Player.Visible, "Enabled")
+	MakeCheckbox(PlayerPanel, 180, 75, "Invisible Chams", Vars.Chams.Player.Invisible, "Enabled")
 	
-	AddColorbox(PlayerPanel, 315, 50, Vars, "PlayerCham_Visible_Color")
-	AddColorbox(PlayerPanel, 315, 75, Vars, "PlayerCham_Invisible_Color")
+	AddColorbox(PlayerPanel, 315, 50, Vars.Chams.Player.Visible, "Color")
+	AddColorbox(PlayerPanel, 315, 75, Vars.Chams.Player.Invisible, "Color")
 	
 	local VisibleMaterial = vgui.Create("DComboBox", PlayerPanel)
 	VisibleMaterial:SetPos(180, 100)
@@ -1032,7 +1051,7 @@ do
 	VisibleMaterial:AddChoice("Waterish")
 	VisibleMaterial:AddChoice("Woa")
 	VisibleMaterial.OnSelect = function(self, index, value)
-		Vars.PlayerCham_Visible_Material = value
+		Vars.Chams.Player.Visible.Material = value
 	end
 	
 	local InvisibleMaterial = vgui.Create("DComboBox", PlayerPanel)
@@ -1041,13 +1060,46 @@ do
 	InvisibleMaterial:SetValue("Invisible Mat")
 	InvisibleMaterial:AddChoice("DebugWhite")
 	InvisibleMaterial.OnSelect = function(self, index, value)
-		Vars.PlayerCham_Invisible_Material = value
+		Vars.Chams.Player.Invisible.Material = value
 	end
 	
 	--- Hitboxes
 	
-	MakeCheckBox(PlayerPanel, 155, 150, "Hitboxes", "Hitboxes")
-	MakeCheckBox(PlayerPanel, 180, 175, "Bounding Box", "BoundingBox")
+	MakeCheckbox(PlayerPanel, 155, 150, "Hitboxes", Vars.Hitboxes, "Enabled")
+	MakeCheckbox(PlayerPanel, 180, 175, "Bounding Box", Vars.Hitboxes, "BoundingBox")
+
+	local PropChamPanel = vgui.Create("DPanel", MainTabs)
+	MainTabs:AddSheet("Prop Chams", PropChamPanel)
+
+	MakeCheckbox(PropChamPanel, 25, 25, "Chams Enabled", Vars.Chams.Prop, "Enabled")
+	MakeCheckbox(PropChamPanel, 50, 50, "Overlay Enabled", Vars.Chams.Prop.Overlay, "Enabled")
+
+	AddColorbox(PropChamPanel, 200, 25, Vars.Chams.Prop, "Color")
+	AddColorbox(PropChamPanel, 200, 50, Vars.Chams.Prop.Overlay, "Color")
+
+	local PropChamMaterial = vgui.Create("DComboBox", PropChamPanel)
+	PropChamMaterial:SetPos(50, 75)
+	PropChamMaterial:SetSize(100, 20)
+	PropChamMaterial:SetValue("Cham Material")
+	PropChamMaterial:AddChoice("DebugWhite")
+	PropChamMaterial:AddChoice("Cherry")
+	PropChamMaterial:AddChoice("Waterish")
+	PropChamMaterial:AddChoice("Woa")
+	PropChamMaterial.OnSelect = function(self, index, value)
+		Vars.Chams.Prop.Material = value
+	end
+	
+	local PropChamOverlayMaterial = vgui.Create("DComboBox", PropChamPanel)
+	PropChamOverlayMaterial:SetPos(50, 100)
+	PropChamOverlayMaterial:SetSize(100, 20)
+	PropChamOverlayMaterial:SetValue("Overlay Mat")
+	PropChamOverlayMaterial:AddChoice("Wireframe")
+	PropChamOverlayMaterial:AddChoice("Glow")
+	PropChamOverlayMaterial:AddChoice("Federal")
+	PropChamOverlayMaterial:AddChoice("HeMovin")
+	PropChamOverlayMaterial.OnSelect = function(self, index, value)
+		Vars.Chams.Prop.Overlay.Material = value
+	end
 	
 	local EntityPanel = vgui.Create("DPanel", MainTabs)
 	MainTabs:AddSheet("Entity ESP", EntityPanel)
@@ -1067,8 +1119,8 @@ do
 	local MiscPanel = vgui.Create("DPanel", MainTabs)
 	MainTabs:AddSheet("Misc", MiscPanel)
 	
-	MakeCheckBox(MiscPanel, 25, 25, "Bhop", "Bhop")
-	MakeCheckBox(MiscPanel, 25, 50, "AutoStrafe", "AutoStrafe")
+	MakeCheckbox(MiscPanel, 25, 25, "Bhop", Vars.Movement, "Bhop")
+	MakeCheckbox(MiscPanel, 25, 50, "AutoStrafe", Vars.Movement, "AutoStrafe")
 	
 	MakeSlider(MiscPanel, 25, 75, 230, 20, "FOV", 0, 180, "FOV")
 	
@@ -1114,3 +1166,5 @@ do
 	Cache.Menu = Main
 	Cache.MenuEntityList = EntityList
 end
+
+collectgarbage("step") -- :P
