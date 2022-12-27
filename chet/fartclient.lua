@@ -1,3 +1,14 @@
+/*
+	fartclient (basically an ncmd paste but not terrible)
+
+	this needs so much fucking work rn, its super broken
+	im just storing it here because i was gonna work on it but i got lazy
+	DO NOT USE!!!!! IT IS COMPLETELY BROKEN
+	
+	DONT EVEN BOTHER LOOKING THROUGH THIS ITS LIKE A YEAR OLD AND SO UDDERLY BROKEN
+	I WILL FIX THIS EVENTUALLY, BUT AFTER MY CURRENT PROJECT
+*/
+
 jit.flush()
  
 local gdraw = draw
