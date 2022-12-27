@@ -1,8 +1,8 @@
 /*
 	ananus thing 
 	TODO:
-		make viewmodel chams customizable
-		add 180 shot
+		fix viewmodel chams
+		add more cham materials
 		add tracers
 */
 
@@ -40,7 +40,7 @@ local Cache = {
 	    Purple = Color(160, 32, 240),
 	    Seafoam = Color(201, 255, 229),
 	    White = Color(255, 255, 255),
-	    Yellow = Color(255, 255, 0, 255),
+	    Yellow = Color(255, 255, 0),
 	},
 
 	Materials = { -- if you wanna add your own cham materials, then add the option on line 1005 or somewhere around there
@@ -116,14 +116,15 @@ local Cache = {
 				["$ignorez"] = 1
 			}),
 			
-			Glow = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", { -- Wireframe Glow Federal HeMovin
-				["$additive"] = "1", 
+			Glow = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "VertexLitGeneric", {
+				["$additive"] = "1",
 				["$basetexture"] = "vgui/white_additive",
 				["$bumpmap"] = "vgui/white_additive",
 				["$selfillum"] = "1",
 				["$selfIllumFresnel"] = "1",
-				["$selfIllumFresnelMinMaxExp"] = "[0 0.15 0.1]",
+				["$selfIllumFresnelMinMaxExp"] = "[0 0.18 0.1]",
 				["$selfillumtint"] = "[0 0 0]",
+				
 				["$ignorez"] = 1,
 			}),
 		
@@ -145,7 +146,7 @@ local Cache = {
 			    }
 			}),
 		
-			HeMovin = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "UnlitGeneric", {
+			HeGlowin = CreateMaterial("hi" .. tostring(math.random(-10000, 10000)), "UnlitGeneric", {
 				["$basetexture"] = "models/debug/debugwhite",
 				["$nodecal"] = 1,
 				["$model"] = 1,
@@ -194,9 +195,9 @@ local Vars = {
 		PlayerFlags = bit.bor(Cache.BitFlags.Enabled, Cache.BitFlags.Name),
 		EntityFlags = bit.bor(Cache.BitFlags.Box, Cache.BitFlags.Name),
 
-		PlayerColor = Color(255, 0, 0, 255),
-		FriendColor = Color(255, 255, 0, 255),
-		EntityColor = Color(200, 0, 255, 255),
+		PlayerColor = Cache.Colors.Red,
+		FriendColor = Cache.Colors.Yellow,
+		EntityColor = Cache.Colors.Pink,
 	},
 
     Chams = {
@@ -204,28 +205,41 @@ local Vars = {
 			Enabled = true,
             Visible = {
                 Enabled = true,
-                Color = Color(0, 255, 255),
+                Color = Cache.Colors.Aqua,
                 Material = "DebugWhite",
             },
 
             Invisible = {
                 Enabled = true,
-                Color = Color(255, 0, 0),
+                Color = Cache.Colors.Red,
                 Material = "DebugWhite",
             },
         },
 
         Prop = {
             Enabled = true,
-            Color = Color(0, 200, 200),
+			XRay = true,
+            Color = Cache.Colors.Aqua,
             Material = "DebugWhite",
 
             Overlay = {
                 Enabled = true,
-                Color = Color(150, 10, 10),
+                Color = Cache.Colors.Crimson,
                 Material = "Wireframe"
             }
-        }
+        },
+
+		ViewModel = {
+			Enabled = true,
+			Color = Cache.Colors.Black,
+			Material = "WoaH",
+
+			Overlay = {
+                Enabled = true,
+                Color = Cache.Colors.Crimson,
+                Material = "Wireframe"
+            }
+		}
     },
 	
 	Hitboxes = {
@@ -240,7 +254,7 @@ local Vars = {
 
 	Tracers = {
         Enabled = true,
-        Color = Color(255, 0, 255)
+        Color = Cache.Colors.Blue
     },
 
 	KillSound = {
@@ -257,14 +271,16 @@ local Vars = {
         Enabled = true,
 	    Length = 2,
 	    Width = 1,
-	    Color = Color(255, 0, 0, 0),
+	    Color = Cache.Colors.Red,
     },
 
 	Thirdperson = {
         Enabled = false,
         Distance = 120,
         Yaw = 0
-    }
+    },
+
+	FPSSaver = true
 }
 
 do -- metatable functions are swag
@@ -391,6 +407,18 @@ end
 
 --- normal functions
 
+local function OnScreen(Entity)
+	local Direction = Entity:GetPos() - EyePos()
+	local Length = Direction:Length()
+	local Radius = Entity:BoundingRadius()
+
+	local Max = math.abs(math.cos(math.acos(Length / math.sqrt((Length * Length) + (Radius * Radius))) + 60 * (math.pi / 180)))
+
+	Direction:Normalize()
+
+	return Direction:Dot(EyeVector()) > Max
+end
+
 local function BitflagHasValue(pFlags, pBit)
 	return bit.band(pFlags, pBit) ~= 0
 end
@@ -409,7 +437,7 @@ end
 
 local function GetESPColor(Entity)
 	if not Entity:IsPlayer() then
-	return Cache.Colors.Pink
+		return Cache.Colors.Pink
 	end
 
 	return Entity:IsFriend() and Cache.Colors.Blue or Cache.Colors.Red
@@ -422,7 +450,7 @@ local function ShouldRunESP(Entity)
 		return Cache.EntityClasses[Entity:GetClass()] or false
 	end
 
-	return Entity:Alive() and Entity:Team() ~= TEAM_SPECTATOR and Entity:GetObserverMode() == OBS_MODE_NONE and not Entity:IsDormant()
+	return Entity:Alive() and Entity:Team() ~= TEAM_SPECTATOR and Entity:GetObserverMode() == OBS_MODE_NONE
 end
 
 local angle_zero = angle_zero * 1
@@ -638,15 +666,14 @@ local function Chams(Entity)
 			if Weapon:IsValid() then Weapon:DrawModel() end
 		end
 	elseif Vars.Chams.Prop.Enabled and Entity:GetClass() == "prop_physics" then
-		local Dist = Entity:GetPos():DistToSqr(Cache.LocalPlayer:GetPos()) / 500^2
-		
 		local Color = Vars.Chams.Prop.Color
 		local Material = Vars.Chams.Prop.Material
 		
 		cam.Start3D()
-			render.MaterialOverride(Cache.Materials.Invisible[Material])
+			if Vars.Chams.Prop.XRay then cam.IgnoreZ(true) end
+			render.MaterialOverride(Cache.Materials.Visible[Material])
 			render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
-			render.SetBlend(0.08 + Dist)
+			render.SetBlend(Color.a / 255)
 			Entity:DrawModel()
 			
 			-- overlay
@@ -660,6 +687,7 @@ local function Chams(Entity)
 							
 				Entity:DrawModel()
 			end
+			cam.IgnoreZ(false)
 		cam.End3D()
 	end
 end
@@ -752,19 +780,25 @@ hook.Add("CreateMove", "", function(cmd)
 	Bhop(cmd)
 	AutoStrafe(cmd)
 end)
-     
+    
+local IsDrawingGlow = false
 hook.Add("PreDrawViewModel", "", function()
+	if not Vars.Chams.ViewModel.Enabled then return end 
+
+	local Color = Vars.Chams.ViewModel.Color
+	local Material = Vars.Chams.ViewModel.Material
+
 	if IsDrawingGlow then
-		render.SetColorModulation(1, 0, 0)
-		render.MaterialOverride(Cache.Materials.Visible.Woa)
-		render.MaterialOverride(Cache.Materials.Overlay.Federal)
-	else
-		render.SetColorModulation(0, 0, 0)
+		render.SetColorModulation(Color.r / 255, Color.g / 255, Color.b / 255)
+		render.MaterialOverride(Cache.Materials.Overlay[OVerlayMaterial])
 	end
+	
 	render.SetBlend(1)
 end)	
      
 hook.Add("PostDrawViewModel", "", function()
+	if not Vars.Chams.ViewModel.Enabled then return end 
+
 	render.SetColorModulation(1, 1, 1)
 	render.MaterialOverride(nil)
 	render.SetBlend(1)
@@ -806,6 +840,7 @@ hook.Add("PostDrawHUD", "", function()
 	
 	cam.Start2D() -- fix for the avatar thing cause its a bit fucky without
 		for i = 1, #EntsThisFrame do
+			if Vars.FPSSaver and not OnScreen(EntsThisFrame[i][1]) then continue end
 			DoESP(EntsThisFrame[i][1], EntsThisFrame[i][2])
 		end
 	cam.End2D()
@@ -833,6 +868,7 @@ hook.Add("PreDrawEffects", "", function()
 	end
 	
 	for i = 1, #EntsThisFrame do
+		if Vars.FPSSaver and not OnScreen(EntsThisFrame[i]) then continue end
 		Chams(EntsThisFrame[i])
 		ShowHitboxes(EntsThisFrame[i])
 	end
@@ -908,19 +944,23 @@ do
 		end
 	end
     
-    local function MakeSlider(Parent, X, Y, W, H, Name, Min, Max, Val)
+    local function MakeSlider(Parent, X, Y, W, H, Name, Min, Max, Table, Key)
         local NewSlider = vgui.Create("DNumSlider", Parent)
 		NewSlider:SetMin(Min)
 		NewSlider:SetMax(Max)
 		NewSlider:SetText(Name)
 		NewSlider:SetSize(W, H)
 		NewSlider:SetPos(X, Y)
-		NewSlider:SetValue(Vars[Val])
+
+		NewSlider.m_tTable = Table
+		NewSlider.m_strKey = Key
+
+		NewSlider:SetValue(Table[Key])
 		NewSlider:SetDecimals(0)
-		
-        NewSlider.OnValueChanged = function(self, NewVal)
-            Vars[Val] = NewVal
-        end
+
+		function NewSlider:OnValueChanged(NewValue)
+			self.m_tTable[self.m_strKey] = NewValue
+		end
     end
 
     local function MakeCheckbox(Parent, X, Y, Label, Table, Key)
@@ -1018,32 +1058,62 @@ do
 	
 	local MainTabs = vgui.Create("DPropertySheet", Main)
 	MainTabs:Dock(FILL)
-	local PlayerPanel = vgui.Create("DPanel", MainTabs)
-	MainTabs:AddSheet("Players", PlayerPanel)
 
-	-- Players
+	--- Hitboxes
+	
+	
+	local EntityPanel = vgui.Create("DPanel", MainTabs)
+	MainTabs:AddSheet("ESP", EntityPanel)
 
-	MakeBitFlagCheckBox(PlayerPanel, 25, 25, "ESP Enabled", "PlayerFlags", Cache.BitFlags.Enabled)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 50, "Box", "PlayerFlags", Cache.BitFlags.Box)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 75, "3D Box", "PlayerFlags", Cache.BitFlags.BoxTD)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 100, "Name", "PlayerFlags", Cache.BitFlags.Name)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 125, "Weapon", "PlayerFlags", Cache.BitFlags.Weapon)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 150, "Skeleton", "PlayerFlags", Cache.BitFlags.Skeleton)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 175, "Healthbar", "PlayerFlags", Cache.BitFlags.HealthBar)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 200, "Flags", "PlayerFlags", Cache.BitFlags.Flags)
-	MakeBitFlagCheckBox(PlayerPanel, 50, 225, "Avatar", "PlayerFlags", Cache.BitFlags.Avatar)
+	-- ESP Tabs
+
+	local ESPTabs = vgui.Create("DPropertySheet", EntityPanel)
+	ESPTabs:Dock(FILL)
+
+	local PlayerESPPanel = vgui.Create("DPanel", ESPTabs)
+	ESPTabs:AddSheet("Players", PlayerESPPanel)
+
+	MakeBitFlagCheckBox(PlayerESPPanel, 25, 10, "ESP Enabled", "PlayerFlags", Cache.BitFlags.Enabled)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 32, "Box", "PlayerFlags", Cache.BitFlags.Box)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 54, "3D Box", "PlayerFlags", Cache.BitFlags.BoxTD)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 76, "Name", "PlayerFlags", Cache.BitFlags.Name)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 98, "Weapon", "PlayerFlags", Cache.BitFlags.Weapon)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 120, "Skeleton", "PlayerFlags", Cache.BitFlags.Skeleton)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 142, "Healthbar", "PlayerFlags", Cache.BitFlags.HealthBar)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 164, "Flags", "PlayerFlags", Cache.BitFlags.Flags)
+	MakeBitFlagCheckBox(PlayerESPPanel, 50, 186, "Avatar", "PlayerFlags", Cache.BitFlags.Avatar)
 	
-	-- player chams
+	local EntityESPPanel = vgui.Create("DPanel", ESPTabs)
+	ESPTabs:AddSheet("Entities", EntityESPPanel)
+
+	MakeBitFlagCheckBox(EntityESPPanel, 25, 25, "Enabled", "EntityFlags", Cache.BitFlags.Enabled)
+	MakeBitFlagCheckBox(EntityESPPanel, 50, 50, "Box", "EntityFlags", Cache.BitFlags.Box)
+	MakeBitFlagCheckBox(EntityESPPanel, 50, 75, "3D Box", "EntityFlags", Cache.BitFlags.BoxTD)
+	MakeBitFlagCheckBox(EntityESPPanel, 50, 100, "Name", "EntityFlags", Cache.BitFlags.Name)
+	MakeBitFlagCheckBox(EntityESPPanel, 50, 125, "Weapon", "EntityFlags", Cache.BitFlags.Weapon)
+	MakeBitFlagCheckBox(EntityESPPanel, 50, 150, "Skeleton", "EntityFlags", Cache.BitFlags.Skeleton)
+	MakeBitFlagCheckBox(EntityESPPanel, 50, 175, "Healthbar", "EntityFlags", Cache.BitFlags.HealthBar)
+
+	--- Chams tabs
+
+	local ChamsPanel = vgui.Create("DPanel", MainTabs)
+	MainTabs:AddSheet("Chams", ChamsPanel)
+
+	local ChamsTabs = vgui.Create("DPropertySheet", ChamsPanel)
+	ChamsTabs:Dock(FILL)
+
+	local PlayerChamPanel = vgui.Create("DPanel", ChamsTabs)
+	ChamsTabs:AddSheet("Players", PlayerChamPanel)
+
+	MakeCheckbox(PlayerChamPanel, 25, 25, "Chams Enabled", Vars.Chams.Player, "Enabled")
+	MakeCheckbox(PlayerChamPanel, 50, 50, "Visible Chams", Vars.Chams.Player.Visible, "Enabled")
+	MakeCheckbox(PlayerChamPanel, 50, 75, "Invisible Chams", Vars.Chams.Player.Invisible, "Enabled")
 	
-	MakeCheckbox(PlayerPanel, 155, 25, "Chams Enabled", Vars.Chams.Player, "Enabled")
-	MakeCheckbox(PlayerPanel, 180, 50, "Visible Chams", Vars.Chams.Player.Visible, "Enabled")
-	MakeCheckbox(PlayerPanel, 180, 75, "Invisible Chams", Vars.Chams.Player.Invisible, "Enabled")
+	AddColorbox(PlayerChamPanel, 155, 50, Vars.Chams.Player.Visible, "Color")
+	AddColorbox(PlayerChamPanel, 155, 75, Vars.Chams.Player.Invisible, "Color")
 	
-	AddColorbox(PlayerPanel, 315, 50, Vars.Chams.Player.Visible, "Color")
-	AddColorbox(PlayerPanel, 315, 75, Vars.Chams.Player.Invisible, "Color")
-	
-	local VisibleMaterial = vgui.Create("DComboBox", PlayerPanel)
-	VisibleMaterial:SetPos(180, 100)
+	local VisibleMaterial = vgui.Create("DComboBox", PlayerChamPanel)
+	VisibleMaterial:SetPos(50, 100)
 	VisibleMaterial:SetSize(100, 20)
 	VisibleMaterial:SetValue("Visible Mat")
 	VisibleMaterial:AddChoice("DebugWhite")
@@ -1054,22 +1124,20 @@ do
 		Vars.Chams.Player.Visible.Material = value
 	end
 	
-	local InvisibleMaterial = vgui.Create("DComboBox", PlayerPanel)
-	InvisibleMaterial:SetPos(180, 125)
+	local InvisibleMaterial = vgui.Create("DComboBox", PlayerChamPanel)
+	InvisibleMaterial:SetPos(50, 125)
 	InvisibleMaterial:SetSize(100, 20)
 	InvisibleMaterial:SetValue("Invisible Mat")
 	InvisibleMaterial:AddChoice("DebugWhite")
 	InvisibleMaterial.OnSelect = function(self, index, value)
 		Vars.Chams.Player.Invisible.Material = value
 	end
-	
-	--- Hitboxes
-	
-	MakeCheckbox(PlayerPanel, 155, 150, "Hitboxes", Vars.Hitboxes, "Enabled")
-	MakeCheckbox(PlayerPanel, 180, 175, "Bounding Box", Vars.Hitboxes, "BoundingBox")
 
-	local PropChamPanel = vgui.Create("DPanel", MainTabs)
-	MainTabs:AddSheet("Prop Chams", PropChamPanel)
+	MakeCheckbox(PlayerChamPanel, 180, 25, "Hitboxes", Vars.Hitboxes, "Enabled")
+	MakeCheckbox(PlayerChamPanel, 200, 50, "Bounding Box", Vars.Hitboxes, "BoundingBox")
+	
+	local PropChamPanel = vgui.Create("DPanel", ChamsTabs)
+	ChamsTabs:AddSheet("Prop", PropChamPanel)
 
 	MakeCheckbox(PropChamPanel, 25, 25, "Chams Enabled", Vars.Chams.Prop, "Enabled")
 	MakeCheckbox(PropChamPanel, 50, 50, "Overlay Enabled", Vars.Chams.Prop.Overlay, "Enabled")
@@ -1096,24 +1164,48 @@ do
 	PropChamOverlayMaterial:AddChoice("Wireframe")
 	PropChamOverlayMaterial:AddChoice("Glow")
 	PropChamOverlayMaterial:AddChoice("Federal")
-	PropChamOverlayMaterial:AddChoice("HeMovin")
+	PropChamOverlayMaterial:AddChoice("HeGlowin")
 	PropChamOverlayMaterial.OnSelect = function(self, index, value)
 		Vars.Chams.Prop.Overlay.Material = value
 	end
-	
-	local EntityPanel = vgui.Create("DPanel", MainTabs)
-	MainTabs:AddSheet("Entity ESP", EntityPanel)
 
-	-- Entity ESP
+	MakeCheckbox(PropChamPanel, 50, 125, "X-Ray", Vars.Chams.Prop, "XRay")
 
-	MakeBitFlagCheckBox(EntityPanel, 25, 25, "Enabled", "EntityFlags", Cache.BitFlags.Enabled)
-	MakeBitFlagCheckBox(EntityPanel, 50, 50, "Box", "EntityFlags", Cache.BitFlags.Box)
-	MakeBitFlagCheckBox(EntityPanel, 50, 75, "3D Box", "EntityFlags", Cache.BitFlags.BoxTD)
-	MakeBitFlagCheckBox(EntityPanel, 50, 100, "Name", "EntityFlags", Cache.BitFlags.Name)
-	MakeBitFlagCheckBox(EntityPanel, 50, 125, "Weapon", "EntityFlags", Cache.BitFlags.Weapon)
-	MakeBitFlagCheckBox(EntityPanel, 50, 150, "Skeleton", "EntityFlags", Cache.BitFlags.Skeleton)
-	MakeBitFlagCheckBox(EntityPanel, 50, 175, "Healthbar", "EntityFlags", Cache.BitFlags.HealthBar)
+
+	-- View model chams
+	local ViewModelChamPanel = vgui.Create("DPanel", ChamsTabs)
+	ChamsTabs:AddSheet("View Model", ViewModelChamPanel)
+
+	MakeCheckbox(ViewModelChamPanel, 25, 25, "Chams Enabled", Vars.Chams.ViewModel, "Enabled")
+	MakeCheckbox(ViewModelChamPanel, 50, 50, "Overlay Enabled", Vars.Chams.ViewModel.Overlay, "Enabled")
+
+	AddColorbox(ViewModelChamPanel, 200, 25, Vars.Chams.ViewModel, "Color")
+	AddColorbox(ViewModelChamPanel, 200, 50, Vars.Chams.ViewModel.Overlay, "Color")
+
+	local ViewModelChamMaterial = vgui.Create("DComboBox", ViewModelChamPanel)
+	ViewModelChamMaterial:SetPos(50, 75)
+	ViewModelChamMaterial:SetSize(100, 20)
+	ViewModelChamMaterial:SetValue("Cham Material")
+	ViewModelChamMaterial:AddChoice("DebugWhite")
+	ViewModelChamMaterial:AddChoice("Cherry")
+	ViewModelChamMaterial:AddChoice("Waterish")
+	ViewModelChamMaterial:AddChoice("Woa")
+	ViewModelChamMaterial.OnSelect = function(self, index, value)
+		Vars.Chams.ViewModel.Material = value
+	end
 	
+	local ViewModelChamOverlayMaterial = vgui.Create("DComboBox", ViewModelChamPanel)
+	ViewModelChamOverlayMaterial:SetPos(50, 100)
+	ViewModelChamOverlayMaterial:SetSize(100, 20)
+	ViewModelChamOverlayMaterial:SetValue("Overlay Mat")
+	ViewModelChamOverlayMaterial:AddChoice("Wireframe")
+	ViewModelChamOverlayMaterial:AddChoice("Glow")
+	ViewModelChamOverlayMaterial:AddChoice("Federal")
+	ViewModelChamOverlayMaterial:AddChoice("HeGlowin")
+	ViewModelChamOverlayMaterial.OnSelect = function(self, index, value)
+		Vars.Chams.ViewModel.Overlay.Material = value
+	end
+
 	--- Misc panel
 	
 	local MiscPanel = vgui.Create("DPanel", MainTabs)
@@ -1122,8 +1214,21 @@ do
 	MakeCheckbox(MiscPanel, 25, 25, "Bhop", Vars.Movement, "Bhop")
 	MakeCheckbox(MiscPanel, 25, 50, "AutoStrafe", Vars.Movement, "AutoStrafe")
 	
-	MakeSlider(MiscPanel, 25, 75, 230, 20, "FOV", 0, 180, "FOV")
-	
+	MakeCheckbox(MiscPanel, 25, 75, "Override FOV", Vars.CustomFOV, "Enabled")
+	MakeSlider(MiscPanel, 50, 100, 230, 20, "FOV", 0, 180, Vars.CustomFOV, "FOV")
+	-- CustomFOV
+	MakeCheckbox(MiscPanel, 25, 125, "FPS Saver", Vars, "FPSSaver")
+
+	MakeCheckbox(MiscPanel, 195, 25, "Kill Sound", Vars.KillSound, "Enabled")
+
+	local SoundFile = vgui.Create( "DTextEntry", MiscPanel)
+	SoundFile:SetPos(220, 50)
+	SoundFile:SetSize(140, 20)
+	SoundFile:SetPlaceholderText("sound path goes here")
+	SoundFile.OnEnter = function(self)
+		Vars.KillSound.Sound = self:GetValue()
+	end
+
 	---- Entity list
 
 	local EntityListPanel = vgui.Create("DPanel", MainTabs)
