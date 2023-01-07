@@ -5,12 +5,14 @@
 		Ragebot:
 			Aimbot
 			Silent Aim
+			NoSpread
+			Aim Triangle
 			Auto Shoot
 			Anti Recoil
 			Auto Wall
 
 		HvH:
-			Customizable Anti Aim (Real and fake might be swapped I never actually tested it)
+			Customizable Anti Aim
 			LBY breaker (But only sometimes for some reason)
 			Fakelag (Air + ground)
 
