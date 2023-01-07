@@ -110,6 +110,9 @@ local Cache = {
 	Entities = {},
 	Players = {},
 
+	Skyboxes = {},
+	SkyTextures = {},
+
 	FOVTri = {
 		{x = 0, y = 0},
 		{x = 0, y = 0},
@@ -161,6 +164,8 @@ local Cache = {
 	ConVars = {
 		m_pitch = GetConVar("m_pitch"),
 		m_yaw = GetConVar("m_yaw"),
+		
+		cl_interpolate = GetConVar("cl_interpolate"),
 
 		cl_sidespeed = GetConVar("cl_sidespeed"),
 		cl_forwardspeed = GetConVar("cl_forwardspeed"),
@@ -290,6 +295,18 @@ local Cache = {
 		Protected = {
 			"LibbyProtectedSpawn" -- Libby's
 		}
+	},
+
+	FreeCam = {
+		Speeds = {
+			Normal = 150,
+			Sprint = 250,
+			Walk = 75
+		},
+	
+		Position = LocalPlayer():EyePos(),
+		Angle = angle_zero * 1,
+		PreAngle = angle_zero * 1
 	}
 }
 
@@ -483,6 +500,12 @@ local Vars = {
 	},
 
 	Miscellaneous = {
+		FreeCam = {
+			Enabled = false,
+			Speed = 15
+		},
+		
+		
 		KillSound = {
 			Enabled = false,
 			Path = "pSounds/bonk.mp3"
@@ -511,6 +534,65 @@ local meta_cv_g = _Registry.ConVar
 local meta_en_g = _Registry.Entity
 local meta_pl_g = _Registry.Player
 local meta_wn_g = _Registry.Weapon
+
+do
+	local CurrSky = GetConVar("sv_skyname"):GetString()
+
+	if not CurrSky then
+		return error("Failed to get sky name") -- Black magic
+	end
+
+	local SkyboxTypes = {"lf", "ft", "rt", "bk", "dn", "up"} -- Retarded
+
+	for i = 1, #SkyboxTypes do
+		Cache.SkyTextures[i] = Material("skybox/".. CurrSky.. SkyboxTypes[i]) -- Get the current sky materials
+	end
+
+	local files, _ = file.Find("materials/skybox/*", "GAME") -- Get list of skyboxes
+
+	if #files < 1 then
+		return error("No skybox files found") -- Sad times
+	end
+
+	local parsed = {}
+
+	for _, v in next, files do
+		local name = v:sub(1, #v - 6) -- Remove file extension and stupid 2 letters at the end
+		
+		if parsed[name] then continue end
+		
+		local temp = {}
+		local breakouter = false
+		
+		for i = 1, #SkyboxTypes do
+			local mat = Material("skybox/" .. name .. SkyboxTypes[i]) -- This is very laggy the first time the script is loaded
+			
+			if not mat or mat:IsError() then -- No bueno
+				breakouter = true
+				break
+			end
+			
+			local texture = mat:GetTexture("$basetexture")
+			
+			if not texture or texture:IsError() or texture:IsErrorTexture() then -- No bueno
+				breakouter = true
+				break
+			end
+			
+			temp[#temp + 1] = texture -- Bueno!!
+		end
+		
+		parsed[name] = true
+		
+		if breakouter then continue end
+		
+		Cache.Skyboxes[name] = table.Copy(temp)
+	end
+
+	if table.Count(Cache.Skyboxes) < 1 then
+		return error("No skyboxes found") -- Sadder times
+	end
+end
 
 --[[
 	Panel setup
@@ -759,6 +841,38 @@ MainFrame.PerformLayout = function(self, w, h)
 	MiscellaneousDeathSayMode.FHOnSelect = function(self, index, value, data)
 		Vars.Miscellaneous.DeathSay.Mode = data
 	end
+
+	local MiscellaneousSkyboxChanger = fgui.Create("FHDropDown", MiscellaneousPanel)
+	MiscellaneousSkyboxChanger:SetSize(100, 20)
+	MiscellaneousSkyboxChanger:SetPos(50, 195)
+	MiscellaneousSkyboxChanger:SetText("Skybox Changer")
+
+	for k, _ in pairs(Cache.Skyboxes) do
+		MiscellaneousSkyboxChanger:AddChoice(k)
+	end
+
+	MiscellaneousSkyboxChanger.FHOnSelect = function(self, index, value) 
+		if not Cache.Skyboxes[value] then return end
+
+		SelectedSky = value
+			
+		for i = 1, #Cache.SkyTextures do
+			Cache.SkyTextures[i]:SetTexture("$basetexture", Cache.Skyboxes[SelectedSky][i])
+		end 
+	end
+
+	local MiscellaneousFreeCam = fgui.Create("FHCheckBox", MiscellaneousPanel)
+	MiscellaneousFreeCam:SetPos(25, 225)
+	MiscellaneousFreeCam:SetText("Free Cam")
+	MiscellaneousFreeCam:SetVarTable(Vars.Miscellaneous.FreeCam, "Enabled")
+	
+	local MiscellaneousFreeCamSpeed = fgui.Create("FHSlider", MiscellaneousPanel)
+	MiscellaneousFreeCamSpeed:SetText("Cam Speed")
+	MiscellaneousFreeCamSpeed:SetPos(25, 250)
+	MiscellaneousFreeCamSpeed:SetWide(400)
+	MiscellaneousFreeCamSpeed:SetMinMax(1, 120)
+	MiscellaneousFreeCamSpeed:SetDecimals(0)
+	MiscellaneousFreeCamSpeed:SetVarTable(Vars.Miscellaneous.FreeCam, "Speed")
 end
 
 -- Env list
@@ -1228,6 +1342,27 @@ local function CanShoot()
 	return GetServerTime() >= Weapon:GetNextPrimaryFire() and BaseCheck	
 end
 
+local function GetLerpTime()
+	if not Cache.ConVars.cl_interpolate:GetBoolSafe() then
+		return 0
+	end
+	
+	if Cache.ConVars.sv_minupdaterate and Cache.ConVars.sv_maxupdaterate then
+		Cache.ConVars.cl_updaterate = Cache.ConVars.sv_maxupdaterate:GetInt()
+	end
+
+	local ratio = Cache.ConVars.cl_interp_ratio:GetFloatSafe()
+	if ratio == 0 then
+		ratio = 1
+	end
+
+	local lerp = Cache.ConVars.cl_interp:GetFloatSafe()
+	if Cache.ConVars.sv_client_max_interp_ratio and Cache.ConVars.sv_client_max_interp_ratio and Cache.ConVars.sv_client_min_interp_ratio:GetFloatSafe() ~= 1 then
+		ratio = math.Clamp(ratio, Cache.ConVars.sv_client_min_interp_ratio:GetFloatSafe(), Cache.ConVars.sv_client_max_interp_ratio:GetFloatSafe())
+	end
+
+	return math.max(lerp, ratio / Cache.ConVars.cl_updaterate)
+end
 
 local function ToggleMenu()
 	local stat = not MainFrame:IsVisible()
@@ -1499,6 +1634,20 @@ local function CalculateNoSpread(Weapon, cmd, ForwardAngle)
 	ForwardAngle:Set(SpreadVector:Angle())
 end
 
+local function PredictTargetPosition(Position, Entity)
+	if not Cache.ConVars.cl_interpolate:GetBool() then return end
+
+	local Velocity = Entity:GetAbsVelocity()
+	if Velocity:IsZero() then return end
+
+	local FrameTime = RealFrameTime()
+	local InterpolationTime = GetLerpTime()
+	local Difference = math.max(FrameTime, InterpolationTime) - math.min(FrameTime, InterpolationTime)
+
+	Velocity:Mul(FrameTime + Difference)
+	Position:Add(Velocity)
+end
+
 local function GetHitBoxPositions(entity) -- Scans hitboxes for aim points
 	if not IsValid(entity) then
 		return nil
@@ -1712,7 +1861,9 @@ local function Aimbot(cmd)
 
 		local Position = GetAimPosition(Target)
 		if not Position then return end
-
+		
+		PredictTargetPosition(Position, Target)
+		
 		local Direction = (Position - Cache.LocalPlayer:EyePos()):Angle()
 
 		if Vars.Aimbot.Enabled then cmd:AddKey(IN_ATTACK) end
@@ -1799,6 +1950,72 @@ local function RenderReal(ply)
 	ply:SetPoseParameter("move_y", math.Clamp(Cache.MovementFix.y, move_y_min, move_y_max))
 
 	ply:InvalidateBoneCache()
+end
+
+local function FreeCam(cmd)
+	if not Vars.Miscellaneous.FreeCam.Enabled then return end
+
+	-- Movement
+	
+	local CamAng = Cache.FreeCam.Angle
+	local CamPos = Cache.FreeCam.Position
+
+	local Forward = Cache.FreeCam.Angle:Forward()
+	local Right = Cache.FreeCam.Angle:Right()
+	local Up = Cache.FreeCam.Angle:Up()
+
+	local Speed = 0
+
+	if cmd:KeyDown(IN_WALK) then
+		Speed = Cache.FreeCam.Speeds.Walk
+	elseif cmd:KeyDown(IN_SPEED) then
+		Speed = Cache.FreeCam.Speeds.Sprint
+	else
+		Speed = Cache.FreeCam.Speeds.Normal
+	end
+
+	Speed = Speed * (RealFrameTime() * Vars.Miscellaneous.FreeCam.Speed)
+	
+	if cmd:KeyDown(IN_JUMP) then
+		Cache.FreeCam.Position:Add(Up * Speed)
+	end
+	
+	if cmd:KeyDown(IN_DUCK) then
+		Cache.FreeCam.Position:Sub(Up * Speed)
+	end
+
+	if cmd:KeyDown(IN_FORWARD) then
+		Cache.FreeCam.Position:Add(Forward * Speed)
+	end
+
+	if cmd:KeyDown(IN_BACK) then
+		Cache.FreeCam.Position:Sub(Forward * Speed)
+	end
+
+	if cmd:KeyDown(IN_MOVERIGHT) then
+		Cache.FreeCam.Position:Add(Right * Speed)
+	end
+
+	if cmd:KeyDown(IN_MOVELEFT) then
+		Cache.FreeCam.Position:Sub(Right * Speed)
+	end
+
+	-- Camera
+
+	local MouseX = cmd:GetMouseX()
+	local MouseY = cmd:GetMouseY()
+
+	if MouseX ~= 0 or MouseY ~= 0 then
+		Cache.FreeCam.Angle = Cache.FacingAngle
+
+		cmd:SetMouseX(0)
+		cmd:SetMouseY(0)
+	end
+
+	cmd:ClearButtons()
+	cmd:ClearMovement()
+
+	cmd:SetViewAngles(Cache.FreeCam.PreAngle)	
 end
 
 --[[
@@ -1941,6 +2158,8 @@ AddHook("CreateMove", function(cmd)
 
 		return
 	end
+	
+	FreeCam(cmd)
 
 	local Velocity = Cache.LocalPlayer:GetVelocity()
 	local Velocity2D = Velocity:Length2D()
@@ -2234,22 +2453,25 @@ AddHook("PreDrawHalos", function() -- Hah just kidding, these aren't actually ha
 end)
 
 AddHook("CalcView", function(ply, pos, ang, fov, zn, zf)
-	if not IsValid(ply) then return end
+	if ply ~= Cache.LocalPlayer then return end
 
 	ang:Set(Cache.FacingAngle * 1)
 
 	if not Vars.Aimbot.AntiRecoil then
 		ang:Add(ply:GetViewPunchAngles())
 	end
+	
+	local FreeCamEnabled = Vars.Miscellaneous.FreeCam.Enabled
 
 	local view = {
-		origin = pos,
-		angles = ang,
+		origin = FreeCamEnabled and Cache.FreeCam.Position or pos,
+		angles = FreeCamEnabled and Cache.FreeCam.Angle or ang, 
 		fov = fov,
 		znear = zn,
-		zfar = zf
+		zfar = zf,
+		drawviewer = FreeCamEnabled
 	}
-
+	
 	local Vehicle = ply:GetVehicle()
 	
 	if IsValid(Vehicle) then
