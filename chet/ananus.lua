@@ -1,5 +1,5 @@
 /*
-	ananus thing 
+	ananus pk script  thing 
 	TODO:
 		fix viewmodel chams
 		add more cham materials
