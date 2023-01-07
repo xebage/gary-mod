@@ -164,6 +164,17 @@ local Cache = {
 	ConVars = {
 		m_pitch = GetConVar("m_pitch"),
 		m_yaw = GetConVar("m_yaw"),
+
+		cl_interp = GetConVar("cl_interp"),
+
+		sv_minupdaterate = GetConVar("sv_minupdaterate"),
+		sv_maxupdaterate = GetConVar("sv_maxupdaterate"),
+		
+		cl_updaterate = GetConVar("cl_updaterate"),
+		
+		cl_interp_ratio = GetConVar("cl_interp_ratio"),
+		sv_client_min_interp_ratio  = GetConVar("sv_client_min_interp_ratio"),
+		sv_client_max_interp_ratio = GetConVar("sv_client_max_interp_ratio"),
 		
 		cl_interpolate = GetConVar("cl_interpolate"),
 
@@ -171,6 +182,8 @@ local Cache = {
 		cl_forwardspeed = GetConVar("cl_forwardspeed"),
 		
 		sv_tfa_recoil_legacy = GetConVar("sv_tfa_recoil_legacy"),
+		
+		cl_interp_ratio = GetConVar("cl_interp_ratio"),
 
 		Penetration = {
 			ArcCW = GetConVar("arccw_enable_penetration"),
@@ -1604,11 +1617,6 @@ end
 local function CalculateNoSpread(Weapon, cmd, ForwardAngle)
 	if not Vars.Aimbot.NoSpread then return end
 
-	if Weapon:GetClass() == "weapon_pistol" then
-		cmd:SetRandomSeed(33)
-		return
-	end
-
 	local WeaponCone = Cache.WeaponCones[Weapon:GetClass()]
 	if not WeaponCone then return end
 
@@ -1862,7 +1870,7 @@ local function Aimbot(cmd)
 		local Position = GetAimPosition(Target)
 		if not Position then return end
 		
-		PredictTargetPosition(Position, Target)
+		--PredictTargetPosition(Position, Target)
 		
 		local Direction = (Position - Cache.LocalPlayer:EyePos()):Angle()
 
@@ -2095,6 +2103,7 @@ AddHook("entity_killed", function(data)
 	end
 end)
 
+local WeaponTraceOutput = {}
 AddHook("EntityFireBullets", function(Player, Data)
 	if Player ~= Cache.LocalPlayer then return end
 	if not IsFirstTimePredicted() then return end 
@@ -2105,6 +2114,23 @@ AddHook("EntityFireBullets", function(Player, Data)
 	if isvector(Data.Spread) and not Data.Spread:IsZero() then
 		Cache.WeaponCones[Weapon:GetClass()] = Data.Spread
 	end
+
+	local hull = Vector(Data.HullSize, Data.HullSize, Data.HullSize)
+
+	local Trace = {
+		output = WeaponTraceOutput,
+		
+		start = Data.Src,
+		endpos = Data.Src + (Data.Dir * Data.Distance),
+		mins = hull * -1,
+		maxs = hull,
+		mask = MASK_SHOT,
+		filter = {Player, Data.IgnoreEntity}
+	}
+	
+	util.TraceHull(Trace)
+
+	debugoverlay.Line(Data.Src, WeaponTraceOutput.HitPos, 5, Cache.Colors.Red, false)
 end)
 
 AddHook("Tick", function()
