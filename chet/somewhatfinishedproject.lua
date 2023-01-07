@@ -1,7 +1,5 @@
 --[[
-	https://github.com/awesomeusername69420/miscellaneous-gmod-stuff
-
-	I'm likely never going to finish this
+	Edit of https://github.com/awesomeusername69420/miscellaneous-gmod-stuff
 
 	Features:
 		Ragebot:
@@ -36,8 +34,7 @@
 
 	Requires
 		Frozen2
-		https://github.com/Facepunch/garrysmod/pull/1590
-		https://github.com/awesomeusername69420/miscellaneous-gmod-stuff/blob/main/GUIs/fgui/fgui.lua
+		https://github.com/anaamne/gary-mod/tree/main/chet/cheat_modules
 ]]
 
 local function LoadModules(Directory)
