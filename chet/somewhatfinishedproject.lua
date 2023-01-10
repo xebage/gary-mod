@@ -831,6 +831,38 @@ MainFrame.PerformLayout = function(self, w, h)
 	VisualsESPOutline:SetPos(30, 240)
 	VisualsESPOutline:SetText("Outline")
 	VisualsESPOutline:SetVarTable(Vars.Visuals.ESP, "Outline")
+	
+	local VisualHatSection = fgui.Create("FHSection", VisualPanel)
+	VisualHatSection:SetSize(560, 160)
+	VisualHatSection:SetPos(5, 270)
+	VisualHatSection:SetTitle("China Hat")
+	
+	local VisualsHatEnabled = fgui.Create("FHCheckBox", VisualHatSection)
+	VisualsHatEnabled:SetPos(25, 25)
+	VisualsHatEnabled:SetText("Enabled")
+	VisualsHatEnabled:SetVarTable(Vars.Visuals.ChinaHat, "Enabled")
+	
+	local VisualsHatPitch = fgui.Create("FHSlider", VisualHatSection)
+	VisualsHatPitch:SetText("Pitch")
+	VisualsHatPitch:SetPos(30, 40)
+	VisualsHatPitch:SetWide(400)
+	VisualsHatPitch:SetMinMax(-89, 89)
+	VisualsHatPitch:SetDecimals(0)
+	VisualsHatPitch:SetVarTable(Vars.Visuals.ChinaHat, "Pitch")
+	
+	local VisualsHatLength = fgui.Create("FHSlider", VisualHatSection)
+	VisualsHatLength:SetText("Length")
+	VisualsHatLength:SetPos(30, 65)
+	VisualsHatLength:SetWide(400)
+	VisualsHatLength:SetMinMax(1, 80)
+	VisualsHatLength:SetDecimals(0)
+	VisualsHatLength:SetVarTable(Vars.Visuals.ChinaHat, "Length")
+	
+	local VisualsHatColor = fgui.Create("FHColorButton", VisualHatSection)
+	VisualsHatColor:SetPos(20, 100)
+	VisualsHatColor:SetSize(100, 25)
+	VisualsHatColor:SetText("Hat Color")
+	VisualsHatColor:SetVarTable(Vars.Visuals.ChinaHat, "Color")
 
 	local MiscellaneousPanel = MainTabs[4]
 
