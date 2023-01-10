@@ -119,6 +119,16 @@ local Cache = {
 		{x = 0, y = 0},
 	},
 
+	ScreenData = {
+		ScrW = ScrW(),
+		ScrH = ScrH(),
+		
+		Centers = {
+			X = math.floor(ScrW() / 2),
+			Y = math.floor(ScrH() / 2)
+		}
+	},
+
 	CalcView = {
 		EyePos = LocalPlayer():EyePos(),
 		EyeAngles = LocalPlayer():EyeAngles(),
@@ -335,7 +345,7 @@ Cache.WeaponConeFunctions = {
 		local WeaponAngle = Angle(ForwardAngle)
 		local BulletAngle = Angle(WeaponAngle)
 	
-		if Cache.ConVars.sv_tfa_recoil_legacy:GetBool() then
+		if Cache.ConVars.sv_tfa_recoil_legacy:GetBoolSafe() then
 			WeaponAngle:Add(Cache.LocalPlayer:GetViewPunchAngles())
 		elseif Weapon:HasRecoilLUT() then
 			WeaponAngle:Add(Weapon:GetRecoilLUTAngle())
@@ -512,6 +522,13 @@ local Vars = {
 					}
 				}
 			}
+		},
+	
+		ChinaHat = {
+			Enabled = false, 
+			Pitch = 25,
+			Length = 15, 
+			Color = Color(255, 255, 0, 75)
 		}
 	},
 
@@ -619,7 +636,7 @@ MainFrame:SetVisible(false)
 MainFrame:SetTitle("Best cheat you've ever seen")
 MainFrame:SetSize(600, 700)
 MainFrame:SetDeleteOnClose(false)
-MainFrame:SetX((ScrW() / 2) - MainFrame:GetWide() - 10)
+MainFrame:SetX((Cache.ScreenData.ScrW / 2) - MainFrame:GetWide() - 10)
 MainFrame:CenterVertical()
 
 MainFrame._OldPerformLayout = MainFrame.PerformLayout
@@ -899,7 +916,7 @@ EnvFrame:SetTitle("Environment List")
 EnvFrame:SetSize(700, 600)
 EnvFrame:ShowCloseButton(false)
 EnvFrame:SetDeleteOnClose(false)
-EnvFrame:SetX((ScrW() / 2) + 10)
+EnvFrame:SetX((Cache.ScreenData.ScrW / 2) + 10)
 EnvFrame:CenterVertical()
 
 EnvFrame._OldPerformLayout = EnvFrame.PerformLayout
@@ -1646,7 +1663,7 @@ local function CalculateNoSpread(Weapon, cmd, ForwardAngle)
 end
 
 local function PredictTargetPosition(Position, Entity)
-	if not Cache.ConVars.cl_interpolate:GetBool() then return end
+	if not Cache.ConVars.cl_interpolate:GetBoolSafe() then return end
 
 	local Velocity = Entity:GetAbsVelocity()
 	if Velocity:IsZero() then return end
@@ -1807,7 +1824,7 @@ local function GetAimPosition(entity)
 end
 
 local function GetTarget(quick) -- Gets the player whose aimbot points are closest to the center of the screen
-	local x, y = ScrW() * 0.5, ScrH() * 0.5
+	local x, y = Cache.ScreenData.ScrW * 0.5, Cache.ScreenData.ScrH * 0.5
 
 	local best = math.huge
 	local entity = nil
@@ -1963,6 +1980,48 @@ local function RenderReal(ply)
 	ply:InvalidateBoneCache()
 end
 
+local function GetHeadPos(Entity)
+	if not Entity:IsValid() then
+		return Vector(0, 0, 0)
+	end
+	
+	local EntityPos = Entity:GetPos()
+	local HeadPos = Entity:EyePos()
+	
+	for i = 0, Entity:GetBoneCount() - 1 do
+		if string.find(string.lower(Entity:GetBoneName(i)), "head") then
+			HeadPos = Entity:GetBonePosition(i)
+			
+			if HeadPos == EntityPos then
+				HeadPos = Entity:GetBoneMatrix(i):GetTranslation()
+			end
+
+			break
+		end
+	end
+	
+	return HeadPos
+end
+
+local function DrawChinaHat()
+	if not Vars.Visuals.ChinaHat.Enabled then return end
+	if Cache.LocalPlayer:ShouldDrawLocalPlayer() then
+		local base = GetHeadPos(Cache.LocalPlayer) + Vector(0, 0, 10)
+		local ang = Angle(Vars.Visuals.ChinaHat.Pitch, 0, 0)
+		
+		cam.Start3D()
+			for i = 1, 360 do
+				if panic then
+					cam.End3D()
+				end
+			
+				render.DrawLine(base, base + (ang:Forward() * Vars.Visuals.ChinaHat.Length), Vars.Visuals.ChinaHat.Color, false)
+				ang.y = ang.y + 1
+			end
+		cam.End3D()
+	end
+end
+
 local function FreeCam(cmd)
 	if not Vars.Miscellaneous.FreeCam.Enabled then return end
 
@@ -2036,8 +2095,8 @@ end
 do
 	local RandomStream = CUniformRandomStream.New()
 
-	local ShotBiasMin = Cache.ConVars.ai_shot_bias_min:GetFloat()
-	local ShotBiasMax = Cache.ConVars.ai_shot_bias_max:GetFloat()
+	local ShotBiasMin = Cache.ConVars.ai_shot_bias_min:GetFloatSafe()
+	local ShotBiasMax = Cache.ConVars.ai_shot_bias_max:GetFloatSafe()
 	local ShotBiasDif = (ShotBiasMax - ShotBiasMin) + ShotBiasMin
 	local Flatness = math.abs(ShotBiasDif) / 2
 	local iFlatness = 1 - Flatness
@@ -2106,9 +2165,8 @@ AddHook("entity_killed", function(data)
 	end
 end)
 
-local WeaponTraceOutput = {}
 AddHook("EntityFireBullets", function(Player, Data)
-	if Player ~= Cache.LocalPlayer then return end
+	if Player ~= Cache.LocalPlayer or not Data then return end
 	if not IsFirstTimePredicted() then return end 
 	
 	local Weapon = Player:GetActiveWeapon()
@@ -2117,23 +2175,6 @@ AddHook("EntityFireBullets", function(Player, Data)
 	if isvector(Data.Spread) and not Data.Spread:IsZero() then
 		Cache.WeaponCones[Weapon:GetClass()] = Data.Spread
 	end
-
-	local hull = Vector(Data.HullSize, Data.HullSize, Data.HullSize)
-
-	local Trace = {
-		output = WeaponTraceOutput,
-		
-		start = Data.Src,
-		endpos = Data.Src + (Data.Dir * Data.Distance),
-		mins = hull * -1,
-		maxs = hull,
-		mask = MASK_SHOT,
-		filter = {Player, Data.IgnoreEntity}
-	}
-	
-	util.TraceHull(Trace)
-
-	debugoverlay.Line(Data.Src, WeaponTraceOutput.HitPos, 5, Cache.Colors.Red, false)
 end)
 
 AddHook("Tick", function()
@@ -2171,8 +2212,8 @@ AddHook("Tick", function()
 end)
 
 AddHook("InputMouseApply", function(cmd, MouseX, MouseY)
-	Cache.FacingAngle.p = Cache.FacingAngle.p + (MouseY * Cache.ConVars.m_pitch:GetFloat())
-	Cache.FacingAngle.y = Cache.FacingAngle.y - (MouseX * Cache.ConVars.m_yaw:GetFloat())
+	Cache.FacingAngle.p = Cache.FacingAngle.p + (MouseY * Cache.ConVars.m_pitch:GetFloatSafe())
+	Cache.FacingAngle.y = Cache.FacingAngle.y - (MouseX * Cache.ConVars.m_yaw:GetFloatSafe())
 
 	FixAngle(Cache.FacingAngle)
 end)
@@ -2307,7 +2348,7 @@ AddHook("HUDPaint", function()
 
 			local OBBPos = v:LocalToWorld(v:OBBCenter()):ToScreen()
 
-			if not OBBPos.visible then continue end
+			if not OBBPos.Visible then continue end
 
 			if Vars.Visuals.ESP.Skeleton then
 				v:SetupBones()
@@ -2444,9 +2485,10 @@ AddHook("HUDPaint", function()
 		end
 	end
 
-	local w = ScrW()
-	local x, y = w * 0.5, ScrH() * 0.5
-	local fovrad = (math.tan(math.rad(Vars.Aimbot.AimCone.FOV)) / math.tan(math.rad(GetFOV() * 0.5)) * w) / GetZNear()
+	DrawChinaHat()
+
+	local x, y = Cache.ScreenData.ScrW * 0.5, Cache.ScreenData.ScrH * 0.5
+	local fovrad = (math.tan(math.rad(Vars.Aimbot.AimCone.FOV)) / math.tan(math.rad(GetFOV() * 0.5)) * Cache.ScreenData.ScrW) / GetZNear()
 
 	local t = fovrad * 2.3333333333333
 	local s = x - (t / 2)
@@ -2540,6 +2582,14 @@ AddHook("PostPlayerDraw", function(ply)
 	if ply ~= Cache.LocalPlayer or not ShouldAntiAim() then return end
 
 	RenderReal(ply)
+end)
+
+AddHook("OnScreenSizeChanged", function()
+	Cache.ScreenData.ScrW = ScrW()
+	Cache.ScreenData.ScrH = ScrH()
+
+	Cache.ScreenData.Center.X = math.floor(Cache.ScreenData.ScrW / 2)
+	Cache.ScreenData.Center.Y = math.floor(Cache.ScreenData.ScrH / 2)
 end)
 
 --[[
