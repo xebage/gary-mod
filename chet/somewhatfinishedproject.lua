@@ -184,6 +184,9 @@ local Cache = {
 		sv_tfa_recoil_legacy = GetConVar("sv_tfa_recoil_legacy"),
 		
 		cl_interp_ratio = GetConVar("cl_interp_ratio"),
+		
+		ai_shot_bias_min = GetConVar("ai_shot_bias_min"),
+		ai_shot_bias_max = GetConVar("ai_shot_bias_max"),
 
 		Penetration = {
 			ArcCW = GetConVar("arccw_enable_penetration"),
@@ -1649,10 +1652,10 @@ local function PredictTargetPosition(Position, Entity)
 	if Velocity:IsZero() then return end
 
 	local FrameTime = RealFrameTime()
-	local InterpolationTime = GetLerpTime()
-	local Difference = math.max(FrameTime, InterpolationTime) - math.min(FrameTime, InterpolationTime)
+	--local InterpolationTime = GetInterpolationTime()
+	--local Difference = math.max(FrameTime, InterpolationTime) - math.min(FrameTime, InterpolationTime)
 
-	Velocity:Mul(FrameTime + Difference)
+	Velocity:Mul(FrameTime)
 	Position:Add(Velocity)
 end
 
@@ -1691,7 +1694,7 @@ local function GetHitBoxPositions(entity) -- Scans hitboxes for aim points
 			mins:Rotate(ang)
 			maxs:Rotate(ang)
 
-			table.insert(data[hitgroup], pos + ((mins + maxs) * 0.5))
+			data[hitgroup][#data[hitgroup] + 1] = pos + ((mins + maxs) * 0.5)
 
 			null = false
 		end
@@ -1758,8 +1761,8 @@ local function GetBonePositions(entity) -- Scans bones
 		local pos = bonematrix:GetTranslation()
 		if not pos then continue end
 
-		--data[boneloc][#data[boneloc] + 1] = pos
-		table.insert(data[boneloc], pos)
+		data[boneloc][#data[boneloc] + 1] = pos
+		--table.insert(data[boneloc], pos)
 
 		null = false
 	end
@@ -1870,11 +1873,9 @@ local function Aimbot(cmd)
 		local Position = GetAimPosition(Target)
 		if not Position then return end
 		
-		--PredictTargetPosition(Position, Target)
+		PredictTargetPosition(Position, Target)
 		
 		local Direction = (Position - Cache.LocalPlayer:EyePos()):Angle()
-
-		if Vars.Aimbot.Enabled then cmd:AddKey(IN_ATTACK) end
 
 		if not Vars.Aimbot.Silent then Cache.FacingAngle = Angle(Direction) end
 		if Vars.Aimbot.NoSpread then CalculateNoSpread(Weapon, cmd, Direction) end
@@ -1882,6 +1883,8 @@ local function Aimbot(cmd)
 		FixAngle(Direction)
 
 		cmd:SetViewAngles(Direction)
+		
+		if Vars.Aimbot.Enabled then cmd:AddKey(IN_ATTACK) end
 	end
 end
 
@@ -2033,8 +2036,8 @@ end
 do
 	local RandomStream = CUniformRandomStream.New()
 
-	local ShotBiasMin = GetConVar("ai_shot_bias_min"):GetFloat()
-	local ShotBiasMax = GetConVar("ai_shot_bias_max"):GetFloat()
+	local ShotBiasMin = Cache.ConVars.ai_shot_bias_min:GetFloat()
+	local ShotBiasMax = Cache.ConVars.ai_shot_bias_max:GetFloat()
 	local ShotBiasDif = (ShotBiasMax - ShotBiasMin) + ShotBiasMin
 	local Flatness = math.abs(ShotBiasDif) / 2
 	local iFlatness = 1 - Flatness
@@ -2064,7 +2067,7 @@ do
 			X = X,
 			Y = Y,
 			Z = Z
-		 }
+		}
 	end	
 end
 
@@ -2299,7 +2302,7 @@ AddHook("HUDPaint", function()
 	if Vars.Visuals.ESP.Enabled then
 		surface.SetFont(fgui.FontName)
 
-		for _, v in next, player.GetCached(true) do
+		for _, v in ipairs(player.GetCached(true)) do
 			if not v:IsTargettable() then continue end
 
 			local OBBPos = v:LocalToWorld(v:OBBCenter()):ToScreen()
