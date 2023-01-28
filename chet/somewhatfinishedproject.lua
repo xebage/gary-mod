@@ -2356,10 +2356,8 @@ AddHook("CreateMove", function(cmd)
 	else
 		Vars.HvH.bSendPacket = true
 	end
-
+	
 	GetSendPacket(Vars.HvH.bSendPacket)
-
-	local LocalWeapon = Cache.LocalPlayer:GetActiveWeapon()
 
 	StartPrediction(cmd)
 		Aimbot(cmd)
@@ -2375,12 +2373,12 @@ AddHook("HUDPaint", function()
 	if Vars.Visuals.ESP.Enabled then
 		surface.SetFont(fgui.FontName)
 
-		for _, v in ipairs(player.GetCached(true)) do
+		for _, v in next, player.GetCached(true) do
 			if not v:IsTargettable() then continue end
 
 			local OBBPos = v:LocalToWorld(v:OBBCenter()):ToScreen()
 
-			if not OBBPos.Visible then continue end
+			if not OBBPos.visible then continue end
 
 			if Vars.Visuals.ESP.Skeleton then
 				v:SetupBones()
