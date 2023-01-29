@@ -390,7 +390,7 @@ local Vars = {
 		Enabled = true,
 		
 		Key = KEY_F,
-		Silent = false,
+		Silent = true,
 		AutoShoot = true,
 		NoSpread = true,
 		AntiRecoil = true,
@@ -691,10 +691,15 @@ MainFrame.PerformLayout = function(self, w, h)
 	AimbotQuickScan:SetPos(50, 200)
 	AimbotQuickScan:SetText("Quick Scan")
 	AimbotQuickScan:SetVarTable(Vars.Aimbot, "QuickScan")
+	
+	local AimbotQuickScan = fgui.Create("FHCheckBox", AimbotPanel)
+	AimbotQuickScan:SetPos(50, 225)
+	AimbotQuickScan:SetText("Aim Triangle")
+	AimbotQuickScan:SetVarTable(Vars.Aimbot.AimCone, "Enabled")
 
 	local AimbotAdjustAimConeFov = fgui.Create("FHSlider", AimbotPanel)
 	AimbotAdjustAimConeFov:SetText("Cone Fov")
-	AimbotAdjustAimConeFov:SetPos(50, 225)
+	AimbotAdjustAimConeFov:SetPos(50, 241)
 	AimbotAdjustAimConeFov:SetWide(400)
 	AimbotAdjustAimConeFov:SetMinMax(0, 60)
 	AimbotAdjustAimConeFov:SetDecimals(0)
@@ -1167,11 +1172,7 @@ meta_pl_g.IsFriend = function(self)
 end
 
 meta_pl_g.IsTargettable = function(self)
-	return self ~= Cache.LocalPlayer and self:Alive() and self:Team() ~= TEAM_SPECTATOR and self:GetObserverMode() == 0 and not self:IsDormant()
-end
-
-meta_en_g.IsTargettable = function(self)
-	return IsValid(self) and table.HasValue(Vars.Aimbot.Classes, self)
+	return IsValid(self) and self ~= Cache.LocalPlayer and self:Alive() and self:Team() ~= TEAM_SPECTATOR and self:GetObserverMode() == 0 and not self:IsDormant()
 end
 
 meta_en_g.GetHealthColor = function(self)
@@ -1842,10 +1843,10 @@ local function GetAimPosition(entity)
 
 	local data = GetAimPositions(entity)
 
-	for _, set in ipairs(Vars.Aimbot.HitboxOrder) do -- Scans through the positions to find visible ones
+	for _, set in next, Vars.Aimbot.HitboxOrder do -- Scans through the positions to find visible ones
 		if not data[set] then continue end
 
-		for _, v in ipairs(data[set]) do
+		for _, v in next, data[set] do
 			if IsVisible(v, entity) then
 				return v
 			end
@@ -1861,7 +1862,8 @@ local function GetTarget(quick) -- Gets the player whose aimbot points are close
 	local best = math.huge
 	local entity = nil
 
-	for _, v in ipairs(player.GetSorted()) do
+	for _, v in next, player.GetCached(true) do
+		if not v:IsTargettable() then continue end
 		if v:IsInGodMode() or v:IsInBuildMode() or v:IsProtected() or (Vars.Aimbot.IgnoreFriends and v:IsFriend()) or IsValid(v:GetVehicle()) then continue end
 
 		local obbpos = v:LocalToWorld(v:OBBCenter())
@@ -1869,7 +1871,7 @@ local function GetTarget(quick) -- Gets the player whose aimbot points are close
 	
 		local cur = math.Dist(pos.x, pos.y, x, y)
 	
-		if IsVisible(obbpos, v) and cur < best and IsPointInTriangle(pos, Cache.FOVTri) then -- Closest player inside the FOV triangle
+		if IsVisible(obbpos, v) and cur < best and (Vars.Aimbot.AimCone.Enabled and IsPointInTriangle(pos, Cache.FOVTri or true)) then -- Closest player inside the FOV triangle
 			best = cur
 			entity = v
 		end
@@ -1878,16 +1880,16 @@ local function GetTarget(quick) -- Gets the player whose aimbot points are close
 
 		local data = GetAimPositions(v)
 
-		for _, set in ipairs(Vars.Aimbot.HitboxOrder) do
+		for _, set in next, Vars.Aimbot.HitboxOrder do
 			if not data[set] then continue end
 	
-			for _, d in ipairs(data[set]) do
+			for _, d in next, data[set] do
 				if not IsVisible(d, v) then continue end
 
 				pos = d:ToScreen()
 				cur = math.Dist(pos.x, pos.y, x, y)
 
-				if cur < best and IsPointInTriangle(pos, Cache.FOVTri) then
+				if cur < best and (Vars.Aimbot.AimCone.Enabled and IsPointInTriangle(pos, Cache.FOVTri) or true) then
 					best = cur
 					entity = v
 				end
@@ -2373,7 +2375,7 @@ AddHook("HUDPaint", function()
 	if Vars.Visuals.ESP.Enabled then
 		surface.SetFont(fgui.FontName)
 
-		for _, v in next, player.GetCached(true) do
+		for _, v in ipairs(Cache.Players) do
 			if not v:IsTargettable() then continue end
 
 			local OBBPos = v:LocalToWorld(v:OBBCenter()):ToScreen()
@@ -2516,27 +2518,29 @@ AddHook("HUDPaint", function()
 	end
 
 	DrawChinaHat()
-
-	local x, y = Cache.ScreenData.ScrW * 0.5, Cache.ScreenData.ScrH * 0.5
-	local fovrad = (math.tan(math.rad(Vars.Aimbot.AimCone.FOV)) / math.tan(math.rad(GetFOV() * 0.5)) * Cache.ScreenData.ScrW) / GetZNear()
-
-	local t = fovrad * 2.3333333333333
-	local s = x - (t / 2)
-	local m = fovrad
-	local offset_y = 0 - (fovrad / 3)
-
-	Cache.FOVTri = {
-		{x = s, y = (y + m) + offset_y},
-		{x = s + t, y = (y + m) + offset_y},
-		{x = x, y = (y - m) + offset_y}
-	}
-
-	local v1, v2, v3 = Cache.FOVTri[1], Cache.FOVTri[2], Cache.FOVTri[3]
-
-	surface.SetDrawColor(color_white)
-	surface.DrawLine(v1.x, v1.y, v2.x, v2.y)
-	surface.DrawLine(v2.x, v2.y, v3.x, v3.y)
-	surface.DrawLine(v3.x, v3.y, v1.x, v1.y)
+	
+	if Vars.Aimbot.AimCone.Enabled then
+		local x, y = Cache.ScreenData.ScrW * 0.5, Cache.ScreenData.ScrH * 0.5
+		local fovrad = (math.tan(math.rad(Vars.Aimbot.AimCone.FOV)) / math.tan(math.rad(GetFOV() * 0.5)) * Cache.ScreenData.ScrW) / GetZNear()
+	
+		local t = fovrad * 2.3333333333333
+		local s = x - (t / 2)
+		local m = fovrad
+		local offset_y = 0 - (fovrad / 3)
+	
+		Cache.FOVTri = {
+			{x = s, y = (y + m) + offset_y},
+			{x = s + t, y = (y + m) + offset_y},
+			{x = x, y = (y - m) + offset_y}
+		}
+	
+		local v1, v2, v3 = Cache.FOVTri[1], Cache.FOVTri[2], Cache.FOVTri[3]
+	
+		surface.SetDrawColor(color_white)
+		surface.DrawLine(v1.x, v1.y, v2.x, v2.y)
+		surface.DrawLine(v2.x, v2.y, v3.x, v3.y)
+		surface.DrawLine(v3.x, v3.y, v1.x, v1.y)
+	end
 end)
 
 AddHook("PreDrawHalos", function() -- Hah just kidding, these aren't actually halos
